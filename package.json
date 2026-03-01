@@ -1,0 +1,30 @@
+{
+  "name": "ai-gains",
+  "version": "1.0.1",
+  "description": "Interactive browser dashboard for AI development session tracking",
+  "main": "src/server.js",
+  "bin": {
+    "ai-gains": "bin/ai-gains.js"
+  },
+  "scripts": {
+    "start": "node bin/ai-gains.js"
+  },
+  "files": [
+    "bin/",
+    "src/"
+  ],
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "keywords": [
+    "ai",
+    "productivity",
+    "dashboard",
+    "developer-tools",
+    "analytics"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
