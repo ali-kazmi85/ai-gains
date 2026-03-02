@@ -35,11 +35,23 @@ function mergeSettings(existing, template) {
   return result;
 }
 
+function copyDir(src, dst) {
+  fs.mkdirSync(dst, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const dstPath = path.join(dst, entry.name);
+    if (entry.isDirectory()) copyDir(srcPath, dstPath);
+    else fs.copyFileSync(srcPath, dstPath);
+  }
+}
+
 function initProject(targetDir) {
   const claudeDir   = path.join(targetDir, '.claude');
   const settingsPath = path.join(claudeDir, 'settings.json');
   const skillDst    = path.join(claudeDir, 'skills', 'ai-gains', 'SKILL.md');
   const skillSrc    = path.join(TEMPLATE_DIR, '.claude', 'skills', 'ai-gains', 'SKILL.md');
+  const scriptsSrc  = path.join(TEMPLATE_DIR, '.claude', 'scripts', 'ai-gains');
+  const scriptsDst  = path.join(claudeDir, 'scripts', 'ai-gains');
   const templateSettingsPath = path.join(TEMPLATE_DIR, '.claude', 'settings.json');
 
   console.log('\n  AI Gains ⚡  Init\n');
@@ -69,6 +81,11 @@ function initProject(targetDir) {
   const skillExisted = fs.existsSync(skillDst);
   fs.copyFileSync(skillSrc, skillDst);
   console.log(`  ${skillExisted ? 'updated' : 'created'} .claude/skills/ai-gains/SKILL.md`);
+
+  // Copy hook scripts (safe to overwrite)
+  const scriptsExisted = fs.existsSync(scriptsDst);
+  copyDir(scriptsSrc, scriptsDst);
+  console.log(`  ${scriptsExisted ? 'updated' : 'created'} .claude/scripts/ai-gains/`);
 
   console.log('\n  Done. Start a Claude Code session in this project to begin tracking.\n');
 }

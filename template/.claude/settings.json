@@ -6,7 +6,7 @@
           {
             "type": "command",
             "label": "ai-gains",
-            "command": "DATA=$(cat); SESSION_ID=$(echo \"$DATA\" | jq -r '.session_id'); TS=$(date -u +%Y-%m-%dT%H:%M:%SZ); AUTHOR=$(git config user.email 2>/dev/null | tr -d '\\n'); AUTHOR=\"${AUTHOR:-unknown}\"; mkdir -p .ai-gains; jq -n --arg id \"$SESSION_ID\" --arg t \"$TS\" --arg author \"$AUTHOR\" '{session_id: $id, start_time: $t, author: $author}' > \".ai-gains/${SESSION_ID}.json\""
+            "command": "node .claude/scripts/ai-gains/session-start.js"
           }
         ]
       }
@@ -17,7 +17,7 @@
           {
             "type": "command",
             "label": "ai-gains",
-            "command": "DATA=$(cat); SESSION_ID=$(echo \"$DATA\" | jq -r '.session_id'); echo \"Session ID: $SESSION_ID. IMPORTANT: In your final response, remind the user to update the ai-gains session log (the /ai-gains skill).\""
+            "command": "node .claude/scripts/ai-gains/user-prompt-submit.js"
           }
         ]
       }
@@ -28,7 +28,7 @@
           {
             "type": "command",
             "label": "ai-gains",
-            "command": "DATA=$(cat); SESSION_ID=$(echo \"$DATA\" | jq -r '.session_id'); FILE=\".ai-gains/${SESSION_ID}.json\"; TS=$(date -u +%Y-%m-%dT%H:%M:%SZ); if [ -f \"$FILE\" ]; then tmp=$(mktemp); jq --arg t \"$TS\" '.end_time = $t' \"$FILE\" > \"$tmp\" && mv \"$tmp\" \"$FILE\"; fi"
+            "command": "node .claude/scripts/ai-gains/stop.js"
           }
         ]
       }
