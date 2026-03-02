@@ -9,13 +9,13 @@ description: Manages the AI gains session log. Session initialization and user p
 
 Session tracking is managed automatically via hooks configured in `.claude/settings.json`:
 
-- **SessionStart hook**: Reads Claude Code's `session_id` from stdin and creates `.ai-gains/<session_id>.json` with `start_time` and `author`.
+- **SessionStart hook**: Reads Claude Code's `session_id` from stdin and creates `.ai-gains/<start_time>_<session_id>.json` with `start_time` and `author`. The timestamp uses `-` instead of `:` for cross-platform filename compatibility (e.g. `2026-03-02T09-00-00Z_<session_id>.json`).
 - **UserPromptSubmit hook**: Reads the `session_id` from stdin and echoes it into context with a lightweight reminder for Claude to prompt the user to update the log at the end of each response. The skill itself is not loaded automatically — only when the user invokes `/ai-gains`.
-- **Stop hook**: Reads the `session_id` from stdin and updates `end_time` in `.ai-gains/<session_id>.json` after every Claude response.
+- **Stop hook**: Reads the `session_id` from stdin, locates the matching `.ai-gains/*_<session_id>.json` file, and updates `end_time` after every Claude response.
 
 `duration_minutes` is the wall-clock time from `start_time` to `end_time`. This intentionally includes human review time, approval of actions, reading diffs, etc. — giving a true picture of total time spent with AI vs. without.
 
-Files are named by `session_id` so concurrent sessions never conflict.
+Files are named `<start_time>_<session_id>.json` so they sort chronologically and concurrent sessions never conflict.
 
 Claude should note the Session ID echoed by each UserPromptSubmit hook and use it to locate the session file.
 
@@ -33,12 +33,12 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
 
 1. Get the current UTC time:
    ```bash
-   date -u +%Y-%m-%dT%H:%M:%SZ
+   node -e "console.log(new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'))"
    ```
 
 2. Use the Session ID echoed by the UserPromptSubmit hook (present in context) to locate the session file:
    ```
-   .ai-gains/<session_id>.json
+   .ai-gains/*_<session_id>.json
    ```
 
 3. Read the session file to get `start_time` and `end_time`.
