@@ -5,7 +5,7 @@ Track the time you save using AI in your development workflow. AI Gains automati
 ## How it works
 
 1. **Hooks** record each Claude Code session — start time, author, end time
-2. **A skill** prompts Claude to log achievements and estimate how long the work would have taken without AI
+2. **A skill** reminds you to log achievements at natural stopping points; run `/ai-gains` whenever you want to capture what was done and estimate how long it would have taken without AI
 3. **A dashboard** visualises sessions, time saved, and speedup across your project
 
 ## Setup
@@ -32,17 +32,15 @@ To use a different port:
 PORT=4000 npx ai-gains
 ```
 
-## Logging a session
+## Logging achievements
 
-At the end of a Claude Code session, run:
+After completing a meaningful piece of work — a feature, a bug fix, a refactor — run:
 
 ```
 /ai-gains
 ```
 
-Claude will reflect on the work done, estimate how long it would have taken a human, and write the session log to `.ai-gains/`.
-
-You can also run `/ai-gains` mid-session to log a checkpoint.
+Claude will reflect on what was done, estimate how long it would have taken a human, and write the achievement to the session log. Run it as many times as you like within a session to capture checkpoints, or once at the end to log everything in one go. The hooks handle start and end time automatically — `/ai-gains` is purely for recording what was accomplished.
 
 ## Dashboard features
 
@@ -74,7 +72,7 @@ Each session file (`.ai-gains/<session-id>.json`) contains:
 
 ## Committing session logs
 
-Add `.ai-gains/` to your repository to share gains across your team. Each file is named by session ID so concurrent sessions never conflict.
+Add `.ai-gains/` to your repository to share gains across your team. Each file is named `<timestamp>_<session-id>.json` so files sort chronologically and concurrent sessions never conflict.
 
 ## Requirements
 
