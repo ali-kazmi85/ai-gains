@@ -80,4 +80,3 @@ Add `.ai-gains/` to your repository to share gains across your team. Each file i
 
 - Node.js 16+
 - [Claude Code](https://claude.ai/code)
-- `jq` (used in hooks — available via `brew install jq` on macOS)
