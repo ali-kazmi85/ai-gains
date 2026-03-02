@@ -15,9 +15,10 @@ process.stdin.on('end', () => {
       .toString().trim();
   } catch {}
 
+  const safeTs = start_time.replace(/:/g, '-');
   fs.mkdirSync('.ai-gains', { recursive: true });
   fs.writeFileSync(
-    `.ai-gains/${session_id}.json`,
+    `.ai-gains/${safeTs}_${session_id}.json`,
     JSON.stringify({ session_id, start_time, author }, null, 2) + '\n'
   );
 });
