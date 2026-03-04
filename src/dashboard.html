@@ -703,7 +703,7 @@
       const branchPill = s.branch ? `<span class="pill branch">⎇ ${esc(s.branch)}</span>` : '';
 
       return `
-        <div class="session-card" onclick="showSession('${esc(s.uuid)}')">
+        <div class="session-card" onclick="showSession('${esc(s.uuid || s.session_id)}')">
           <div class="session-icon">⚡</div>
           <div class="session-body">
             <div class="session-top">
@@ -725,7 +725,7 @@
   // ── Session detail ──────────────────────────────────────────────────────────
 
   function showSession(uuid) {
-    const s  = sessions.find(x => x.uuid === uuid);
+    const s  = sessions.find(x => (x.uuid || x.session_id) === uuid);
     if (!s) return;
     const sp = speedup(s);
     const ht = humanTime(s);
@@ -750,7 +750,7 @@
     const authorStat = s.author ? `
         <div class="detail-stat">
           <div class="detail-stat-label">Author</div>
-          <div class="detail-stat-value" style="font-size:13px;font-weight:500;color:var(--muted)">${esc(s.author)}</div>
+          <div class="detail-stat-value" style="font-size:13px;font-weight:500;color:var(--muted);word-break:break-all;overflow-wrap:anywhere">${esc(s.author)}</div>
         </div>` : '';
     const branchStat = s.branch ? `
         <div class="detail-stat">
@@ -761,7 +761,7 @@
 
     document.getElementById('detail-content').innerHTML = `
       <div class="detail-title">${esc(fmtDate(s.start_time))}</div>
-      <div class="detail-uuid">${esc(s.uuid)}</div>
+      <div class="detail-uuid">${esc(s.uuid || s.session_id)}</div>
 
       <div class="detail-stats">
         <div class="detail-stat">
