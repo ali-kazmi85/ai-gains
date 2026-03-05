@@ -6,7 +6,7 @@
           {
             "type": "command",
             "label": "ai-gains",
-            "command": "node .claude/scripts/ai-gains/session-start.js"
+            "command": "node .claude/scripts/ai-gains/session-start.cjs"
           }
         ]
       }
@@ -17,7 +17,7 @@
           {
             "type": "command",
             "label": "ai-gains",
-            "command": "node .claude/scripts/ai-gains/user-prompt-submit.js"
+            "command": "node .claude/scripts/ai-gains/user-prompt-submit.cjs"
           }
         ]
       }
@@ -28,7 +28,7 @@
           {
             "type": "command",
             "label": "ai-gains",
-            "command": "node .claude/scripts/ai-gains/stop.js"
+            "command": "node .claude/scripts/ai-gains/stop.cjs"
           }
         ]
       }

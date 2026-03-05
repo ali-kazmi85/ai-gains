@@ -15,17 +15,24 @@ function mergeSettings(existing, template) {
       continue;
     }
 
-    // Collect all labels already registered for this hook type
-    const existingLabels = new Set();
+    // Build a map of label -> hook object for existing hooks so we can update in-place
+    const existingByLabel = new Map();
     for (const entry of result.hooks[hookType]) {
       for (const hook of (entry.hooks || [])) {
-        if (hook.label) existingLabels.add(hook.label);
+        if (hook.label) existingByLabel.set(hook.label, hook);
       }
     }
 
-    // Append only hooks whose label isn't already present
+    // Update existing hooks in-place; append hooks whose label isn't already present
     for (const templateEntry of templateEntries) {
-      const newHooks = (templateEntry.hooks || []).filter(h => !existingLabels.has(h.label));
+      const newHooks = [];
+      for (const templateHook of (templateEntry.hooks || [])) {
+        if (existingByLabel.has(templateHook.label)) {
+          Object.assign(existingByLabel.get(templateHook.label), templateHook);
+        } else {
+          newHooks.push(templateHook);
+        }
+      }
       if (newHooks.length > 0) {
         result.hooks[hookType].push({ hooks: newHooks });
       }
