@@ -27,7 +27,7 @@ function readSessions(aiGainsDir) {
         return null;
       }
     })
-    .filter(Boolean);
+    .filter(s => s && Array.isArray(s.achievements) && typeof s.duration_minutes === 'number');
 }
 
 function startServer(aiGainsDir) {
