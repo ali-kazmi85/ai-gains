@@ -1,16 +1,5 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "label": "ai-gains",
-            "command": "node .claude/scripts/ai-gains/session-start.cjs"
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -18,17 +7,6 @@
             "type": "command",
             "label": "ai-gains",
             "command": "node .claude/scripts/ai-gains/user-prompt-submit.cjs"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "label": "ai-gains",
-            "command": "node .claude/scripts/ai-gains/stop.cjs"
           }
         ]
       }

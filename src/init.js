@@ -5,9 +5,24 @@ const path = require('path');
 
 const TEMPLATE_DIR = path.join(__dirname, '..', 'template');
 
+const STALE_HOOK_TYPES = ['SessionStart', 'Stop'];
+const AI_GAINS_LABEL = 'ai-gains';
+
 function mergeSettings(existing, template) {
   const result = JSON.parse(JSON.stringify(existing));
   if (!result.hooks) result.hooks = {};
+
+  // Remove stale ai-gains hooks that no longer exist in the template
+  for (const hookType of STALE_HOOK_TYPES) {
+    if (!result.hooks[hookType]) continue;
+    result.hooks[hookType] = result.hooks[hookType]
+      .map(entry => ({
+        ...entry,
+        hooks: (entry.hooks || []).filter(h => h.label !== AI_GAINS_LABEL)
+      }))
+      .filter(entry => (entry.hooks || []).length > 0);
+    if (result.hooks[hookType].length === 0) delete result.hooks[hookType];
+  }
 
   for (const [hookType, templateEntries] of Object.entries(template.hooks || {})) {
     if (!result.hooks[hookType]) {
@@ -88,6 +103,16 @@ function initProject(targetDir) {
   const skillExisted = fs.existsSync(skillDst);
   fs.copyFileSync(skillSrc, skillDst);
   console.log(`  ${skillExisted ? 'updated' : 'created'} .claude/skills/ai-gains/SKILL.md`);
+
+  // Remove stale hook scripts that no longer exist in the template
+  const staleScripts = ['session-start.cjs', 'stop.cjs'];
+  for (const name of staleScripts) {
+    const stalePath = path.join(scriptsDst, name);
+    if (fs.existsSync(stalePath)) {
+      fs.rmSync(stalePath);
+      console.log(`  removed  .claude/scripts/ai-gains/${name}`);
+    }
+  }
 
   // Copy hook scripts (safe to overwrite)
   const scriptsExisted = fs.existsSync(scriptsDst);

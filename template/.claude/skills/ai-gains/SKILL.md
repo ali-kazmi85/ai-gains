@@ -7,17 +7,11 @@ description: Manages the AI gains session log. Session initialization and user p
 
 ## Context
 
-Session tracking is managed automatically via hooks configured in `.claude/settings.json`:
+Session tracking is managed automatically via a hook configured in `.claude/settings.json`:
 
-- **SessionStart hook**: Reads Claude Code's `session_id` from stdin and creates `.ai-gains/<start_time>_<session_id>.json` with `start_time` and `author`. The timestamp uses `-` instead of `:` for cross-platform filename compatibility (e.g. `2026-03-02T09-00-00Z_<session_id>.json`).
-- **UserPromptSubmit hook**: Reads the `session_id` from stdin and echoes it into context with a lightweight reminder for Claude to prompt the user to update the log at the end of each response. The skill itself is not loaded automatically — only when the user invokes `/ai-gains`.
-- **Stop hook**: Reads the `session_id` from stdin, locates the matching `.ai-gains/*_<session_id>.json` file, and updates `end_time` after every Claude response.
+- **UserPromptSubmit hook**: Reads `session_id` and `transcript_path` from stdin and echoes both into context, along with a lightweight reminder for Claude to prompt the user to update the log at the end of each response. The skill itself is not loaded automatically — only when the user invokes `/ai-gains`.
 
-`duration_minutes` is the wall-clock time from `start_time` to `end_time`. This intentionally includes human review time, approval of actions, reading diffs, etc. — giving a true picture of total time spent with AI vs. without.
-
-Files are named `<start_time>_<session_id>.json` so they sort chronologically and concurrent sessions never conflict.
-
-Claude should note the Session ID echoed by each UserPromptSubmit hook and use it to locate the session file.
+`duration_minutes` is derived from the first and last timestamped entries in the session transcript. This reflects actual conversation activity from first message to last response, and intentionally includes human review time, approval of actions, reading diffs, etc. — giving a true picture of total time spent with AI vs. without.
 
 ## Proactive Log Reminders
 
@@ -31,19 +25,24 @@ Claude should use judgment about what counts as "meaningful" -- a single quick a
 
 When the user invokes `/ai-gains` or confirms they want to update the log:
 
-1. Get the current UTC time:
+1. Get `session_id` and `transcript_path` from the context echoed by the UserPromptSubmit hook.
+
+2. Run `get-session-times.cjs` with the transcript path to get accurate start/end times and duration:
    ```bash
-   node -e "console.log(new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'))"
+   node .claude/scripts/ai-gains/get-session-times.cjs <transcript_path>
+   ```
+   This outputs `{ start_time, end_time, duration_minutes }` derived from the first and last timestamped entries in the transcript.
+
+3. Get the author from git config:
+   ```bash
+   git config user.email
    ```
 
-2. Use the Session ID echoed by the UserPromptSubmit hook (present in context) to locate the session file:
+4. Check if a session file already exists for this session:
    ```
    .ai-gains/*_<session_id>.json
    ```
-
-3. Read the session file to get `start_time` and `end_time`.
-
-4. Calculate `duration_minutes` as the difference between `end_time` and `start_time` in minutes (wall-clock time). This includes all time spent in the session — AI working, human reviewing, approving actions, reading output, etc.
+   If it exists, read the existing `achievements` array to use as a starting point for merging.
 
 5. Reflect on all work done this session: research done, features built, bugs fixed, problems solved, code reviewed, debugging done, documentation updated, etc.
 
@@ -60,14 +59,16 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
    - `ui-ux` — designing or improving user interfaces and user experiences
    - `other` — anything that doesn't fit the above
 
-8. Write the updated JSON back to `.ai-gains/<start_utc_timestamp>_<uuid>.json`, preserving existing fields. The JSON structure should look like this:
+8. Merge new achievements with any existing ones from step 4. If a prior achievement is superseded or refined by new work in the same area, update it in place rather than duplicating it.
+
+9. Write the session file to `.ai-gains/<start_time_with_colons_replaced>_<session_id>.json`. The filename uses `-` instead of `:` in the timestamp for cross-platform compatibility. The JSON structure should look like this:
 
 ```json
 {
-  "uuid": "<session-uuid>",
+  "session_id": "<session-id>",
   "start_time": "<ISO start time>",
+  "end_time": "<ISO end time>",
   "author": "<git user email>",
-  "end_time": "<ISO current time>",
   "duration_minutes": "<number>",
   "achievements": [
     {
@@ -80,4 +81,4 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
 }
 ```
 
-8. Confirm to the user that the log has been updated and summarize the key achievements.
+10. Confirm to the user that the log has been updated and summarize the key achievements.
