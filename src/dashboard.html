@@ -182,6 +182,7 @@
     .chart-wrap {
       position: relative;
       height: 240px;
+      cursor: pointer;
     }
 
     /* ── Session cards ── */
@@ -407,6 +408,93 @@
     }
     .placeholder-icon { font-size: 44px; margin-bottom: 14px; }
 
+    /* ── Category breakdown ── */
+    .cat-layout {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .cat-donut-wrap {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      flex-shrink: 0;
+    }
+
+    .cat-legend {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cat-legend-row {
+      display: grid;
+      grid-template-columns: 10px 1fr auto auto;
+      align-items: center;
+      gap: 8px 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: default;
+      transition: background 0.1s;
+      border-radius: 4px;
+    }
+
+    .cat-legend-row:last-child { border-bottom: none; }
+    .cat-legend-row:hover { background: var(--surface-2); }
+
+    .cat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      justify-self: center;
+    }
+
+    .cat-legend-name {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .cat-legend-time {
+      font-size: 13px;
+      font-weight: 700;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .cat-legend-meta {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 600px) {
+      .cat-layout { flex-direction: column; align-items: flex-start; }
+      .cat-donut-wrap { width: 150px; height: 150px; }
+    }
+
+    /* ── Category badge ── */
+    .cat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .cat-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 7px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
@@ -431,7 +519,6 @@
       </select>
       <div class="filter-divider"></div>
       <div class="period-pills" id="period-pills">
-        <button class="period-pill active" data-period="all"  onclick="setPeriod(this)">All time</button>
         <button class="period-pill" data-period="today" onclick="setPeriod(this)">Today</button>
         <button class="period-pill" data-period="3d"    onclick="setPeriod(this)">3 days</button>
         <button class="period-pill" data-period="week"  onclick="setPeriod(this)">Week</button>
@@ -439,8 +526,10 @@
         <button class="period-pill" data-period="3m"    onclick="setPeriod(this)">3 months</button>
         <button class="period-pill" data-period="6m"    onclick="setPeriod(this)">6 months</button>
         <button class="period-pill" data-period="year"  onclick="setPeriod(this)">Year</button>
+        <button class="period-pill" data-period="all"   onclick="setPeriod(this)">All time</button>
       </div>
     </div>
+    <div id="last-session-note" style="font-size:12px;color:var(--muted);margin-bottom:20px;min-height:16px"></div>
 
     <!-- Stats -->
     <div class="stats-grid">
@@ -458,15 +547,31 @@
       </div>
       <div class="stat-card">
         <div class="stat-label">Avg Speedup</div>
-        <div class="stat-value c-orange" id="stat-speedup">—</div>
+        <div class="stat-value c-orange" style="display:flex;align-items:baseline;gap:8px">
+          <span id="stat-speedup">—</span>
+          <span id="stat-speedup-trend" style="font-size:14px;font-weight:600;letter-spacing:0"></span>
+        </div>
       </div>
     </div>
 
     <!-- Chart -->
     <div class="section">
-      <div class="section-label">AI Time vs Estimated Human Time (minutes per session)</div>
+      <div class="section-label">Cumulative Time Saved</div>
       <div class="chart-wrap">
         <canvas id="main-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Category breakdown -->
+    <div id="cat-section" style="display:none">
+      <div class="section">
+        <div class="section-label">By Category</div>
+        <div class="cat-layout">
+          <div class="cat-donut-wrap">
+            <canvas id="cat-chart"></canvas>
+          </div>
+          <div class="cat-legend" id="cat-legend"></div>
+        </div>
       </div>
     </div>
 
@@ -496,9 +601,94 @@
   'use strict';
 
   let sessions = [];
-  let chart = null;
+  let chart    = null;
+  let catChart = null;
   let filterAuthor = '';
-  let filterPeriod = 'all';
+  let filterPeriod = 'all'; // overwritten by pickDefaultPeriod() after load
+
+  // ── Categories ───────────────────────────────────────────────────────────────
+
+  const CATEGORIES = [
+    {
+      id: 'bug-fix',
+      label: 'Bug Fix',
+      color: '#ef4444',
+      dim: 'rgba(239,68,68,0.15)',
+      keywords: ['fixed', 'fix ', 'bug', 'broken', 'regression', 'incorrect', 'wrong', 'invalid',
+                 'failure', 'failed', 'http 4', 'http 5', '410', '400', '500',
+                 'error', 'always showing', 'not working', 'deprecated', 'corrupt'],
+    },
+    {
+      id: 'debugging',
+      label: 'Debugging',
+      color: '#f59e0b',
+      dim: 'rgba(245,158,11,0.15)',
+      keywords: ['debug', 'diagnos', 'root cause', 'traced', 'reproduc', 'pinpoint',
+                 'found the issue', 'found issue', 'identified the bug'],
+    },
+    {
+      id: 'enhancement',
+      label: 'Enhancement',
+      color: '#3b82f6',
+      dim: 'rgba(59,130,246,0.15)',
+      keywords: ['added', 'implemented', 'built', 'created', 'feature', 'improved', 'enhanced',
+                 'redesigned', 'extended', 'upgraded', 'integrated', 'new '],
+    },
+    {
+      id: 'research',
+      label: 'Research',
+      color: '#a855f7',
+      dim: 'rgba(168,85,247,0.15)',
+      keywords: ['research', 'analyz', 'review', 'explor', 'compar', 'evaluat', 'audit',
+                 'investigat', 'survey', 'visual review', 'assess', 'benchmark'],
+    },
+    {
+      id: 'documentation',
+      label: 'Documentation',
+      color: '#14b8a6',
+      dim: 'rgba(20,184,166,0.15)',
+      keywords: ['doc', 'readme', 'comment', 'wrote', 'written', 'document', 'spec', 'guide', 'changelog'],
+    },
+    {
+      id: 'testing',
+      label: 'Testing',
+      color: '#06b6d4',
+      dim: 'rgba(6,182,212,0.15)',
+      keywords: ['test', 'spec', 'unit test', 'integration test', 'e2e', 'assert', 'coverage', 'validat'],
+    },
+    {
+      id: 'refactoring',
+      label: 'Refactoring',
+      color: '#8b5cf6',
+      dim: 'rgba(139,92,246,0.15)',
+      keywords: ['refactor', 'restructur', 'clean up', 'cleanup', 'simplif', 'consolidat', 'reorganiz', 'dedup'],
+    },
+    {
+      id: 'ui-ux',
+      label: 'UI/UX',
+      color: '#ec4899',
+      dim: 'rgba(236,72,153,0.15)',
+      keywords: ['ui', 'ux', 'design', 'layout', 'style', 'css', 'component', 'visual', 'interface', 'responsive'],
+    },
+  ];
+
+  const CAT_OTHER = { id: 'other', label: 'Other', color: '#94a3b8', dim: 'rgba(148,163,184,0.15)' };
+  const CAT_MAP   = Object.fromEntries([...CATEGORIES, CAT_OTHER].map(c => [c.id, c]));
+
+  function classifyByKeywords(description) {
+    const lower = description.toLowerCase();
+    let best = CAT_OTHER, bestScore = 0;
+    for (const cat of CATEGORIES) {
+      const score = cat.keywords.filter(k => lower.includes(k)).length;
+      if (score > bestScore) { bestScore = score; best = cat; }
+    }
+    return best;
+  }
+
+  function getCategory(achievement) {
+    if (achievement.category) return CAT_MAP[achievement.category] || CAT_OTHER;
+    return classifyByKeywords(achievement.description);
+  }
 
   // ── Filters ──────────────────────────────────────────────────────────────────
 
@@ -539,7 +729,9 @@
 
   function applyFilters() {
     filterAuthor = document.getElementById('filter-author').value;
+    renderLastSessionNote();
     renderStats();
+    renderCategories();
     renderChart();
     renderSessions();
   }
@@ -601,6 +793,33 @@
       .replace(/"/g, '&quot;');
   }
 
+  // ── Last session note ────────────────────────────────────────────────────────
+
+  function renderLastSessionNote() {
+    const el = document.getElementById('last-session-note');
+    if (!sessions.length) { el.textContent = ''; return; }
+
+    const latest = sessions.reduce((a, b) =>
+      new Date(a.start_time) > new Date(b.start_time) ? a : b);
+    const diff = Date.now() - new Date(latest.start_time);
+    const mins  = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days  = Math.floor(diff / 86400000);
+
+    let ago;
+    if      (mins  <  1)  ago = 'just now';
+    else if (mins  < 60)  ago = `${mins} minute${mins !== 1 ? 's' : ''} ago`;
+    else if (hours < 24)  ago = `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    else if (days  === 1) ago = 'yesterday';
+    else                  ago = `${days} days ago`;
+
+    if (filterPeriod === 'today' && days === 0) {
+      el.textContent = '';
+    } else {
+      el.textContent = `Most recent session ${ago}`;
+    }
+  }
+
   // ── Render stats ────────────────────────────────────────────────────────────
 
   function renderStats() {
@@ -615,58 +834,205 @@
     document.getElementById('stat-achievements').textContent = ach;
     document.getElementById('stat-saved').textContent        = fmtDur(saved);
     document.getElementById('stat-speedup').textContent      = sp.toFixed(1) + '×';
+
+    // Trend: compare avg speedup of most recent 3 sessions vs prior 3
+    const trendEl = document.getElementById('stat-speedup-trend');
+    const sorted  = [...data].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+    const avgSp   = arr => arr.reduce((s, x) => s + speedup(x), 0) / arr.length;
+    if (sorted.length >= 4) {
+      const recent = sorted.slice(-3);
+      const prior  = sorted.slice(-6, -3);
+      const diff   = avgSp(recent) - avgSp(prior);
+      if (diff > 0.1) {
+        trendEl.textContent = '↑';
+        trendEl.style.color = 'var(--green)';
+        trendEl.title = `Recent avg ${avgSp(recent).toFixed(1)}× vs prior ${avgSp(prior).toFixed(1)}×`;
+      } else if (diff < -0.1) {
+        trendEl.textContent = '↓';
+        trendEl.style.color = '#f87171';
+        trendEl.title = `Recent avg ${avgSp(recent).toFixed(1)}× vs prior ${avgSp(prior).toFixed(1)}×`;
+      } else {
+        trendEl.textContent = '→';
+        trendEl.style.color = 'var(--muted)';
+        trendEl.title = `Recent avg ${avgSp(recent).toFixed(1)}× vs prior ${avgSp(prior).toFixed(1)}×`;
+      }
+    } else {
+      trendEl.textContent = '';
+      trendEl.title = '';
+    }
   }
 
-  // ── Render chart ────────────────────────────────────────────────────────────
+  // ── Render category breakdown ────────────────────────────────────────────────
 
-  function renderChart() {
-    const sorted     = [...getFiltered()].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-    const labels     = sorted.map(s => fmtDateShort(s.start_time));
-    const aiTimes    = sorted.map(s => s.duration_minutes);
-    const humanTimes = sorted.map(s => humanTime(s));
+  function renderCategories() {
+    const data    = getFiltered();
+    const section = document.getElementById('cat-section');
+    if (catChart) { catChart.destroy(); catChart = null; }
+    if (!data.length) { section.style.display = 'none'; return; }
 
-    if (chart) chart.destroy();
+    const tally = {};
+    let totalSaved = 0;
+    for (const s of data) {
+      for (const a of s.achievements) {
+        const cat  = getCategory(a);
+        const mins = a.estimated_human_time_minutes || 0;
+        if (!tally[cat.id]) tally[cat.id] = { cat, saved: 0, count: 0 };
+        tally[cat.id].saved += mins;
+        tally[cat.id].count += 1;
+        totalSaved += mins;
+      }
+    }
 
-    chart = new Chart(document.getElementById('main-chart').getContext('2d'), {
-      type: 'bar',
+    const sorted = Object.values(tally).sort((a, b) => b.saved - a.saved);
+    if (!sorted.length) { section.style.display = 'none'; return; }
+
+    section.style.display = '';
+
+    // Centre-text plugin — draws total time saved + label inside the donut hole
+    const centerTextPlugin = {
+      id: 'centerText',
+      afterDatasetsDraw(ch) {
+        const { ctx, chartArea: { top, bottom, left, right } } = ch;
+        const cx = (left + right) / 2, cy = (top + bottom) / 2;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#f1f5f9';
+        ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.fillText(fmtDur(totalSaved), cx, cy - 9);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.fillText('TIME SAVED', cx, cy + 10);
+        ctx.restore();
+      }
+    };
+
+    catChart = new Chart(document.getElementById('cat-chart').getContext('2d'), {
+      type: 'doughnut',
+      plugins: [centerTextPlugin],
       data: {
-        labels,
-        datasets: [
-          {
-            label: 'AI Time (min)',
-            data: aiTimes,
-            backgroundColor: 'rgba(59,130,246,0.75)',
-            borderColor: 'rgb(59,130,246)',
-            borderWidth: 1,
-            borderRadius: 5,
-            borderSkipped: false,
-          },
-          {
-            label: 'Human Estimate (min)',
-            data: humanTimes,
-            backgroundColor: 'rgba(34,197,94,0.45)',
-            borderColor: 'rgb(34,197,94)',
-            borderWidth: 1,
-            borderRadius: 5,
-            borderSkipped: false,
-          }
-        ]
+        labels:   sorted.map(r => r.cat.label),
+        datasets: [{
+          data:            sorted.map(r => r.saved),
+          backgroundColor: sorted.map(r => r.cat.color),
+          borderColor:     '#1e293b',
+          borderWidth:     3,
+          hoverOffset:     6,
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '68%',
         plugins: {
-          legend: {
-            labels: { color: '#94a3b8', font: { size: 12 }, boxWidth: 13, padding: 18 }
-          },
+          legend: { display: false },
           tooltip: {
             backgroundColor: '#1e293b',
             borderColor: '#334155',
             borderWidth: 1,
             titleColor: '#f1f5f9',
             bodyColor: '#94a3b8',
+            padding: 10,
             callbacks: {
-              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} min`
+              label(ctx) {
+                const { saved, count } = sorted[ctx.dataIndex];
+                const pct = totalSaved > 0 ? ((saved / totalSaved) * 100).toFixed(1) : 0;
+                return [
+                  `  ${fmtDur(saved)} saved (${pct}%)`,
+                  `  ${count} achievement${count !== 1 ? 's' : ''}`,
+                ];
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Legend table
+    document.getElementById('cat-legend').innerHTML = sorted.map(({ cat, saved, count }) => {
+      const pct = totalSaved > 0 ? Math.round((saved / totalSaved) * 100) : 0;
+      return `
+        <div class="cat-legend-row">
+          <span class="cat-dot" style="background:${cat.color}"></span>
+          <span class="cat-legend-name">${esc(cat.label)}</span>
+          <span class="cat-legend-time" style="color:${cat.color}">${esc(fmtDur(saved))}</span>
+          <span class="cat-legend-meta">${count} achievement${count !== 1 ? 's' : ''} · ${pct}%</span>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Render chart ────────────────────────────────────────────────────────────
+
+  function renderChart() {
+    const sorted = [...getFiltered()].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+
+    if (chart) chart.destroy();
+
+    if (!sorted.length) return;
+
+    // Build cumulative time-saved values, keeping session reference per point
+    let cumulative = 0;
+    const points = sorted.map(s => {
+      cumulative += (humanTime(s) - s.duration_minutes);
+      return { x: fmtDateShort(s.start_time), y: cumulative, session: s };
+    });
+
+    const canvas = document.getElementById('main-chart');
+
+    chart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: points.map(p => p.x),
+        datasets: [{
+          label: 'Time Saved (min)',
+          data: points.map(p => p.y),
+          borderColor: 'rgb(34,197,94)',
+          backgroundColor: 'rgba(34,197,94,0.08)',
+          borderWidth: 2.5,
+          pointBackgroundColor: 'rgb(34,197,94)',
+          pointBorderColor: '#0f172a',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          fill: true,
+          tension: 0.35,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        onClick(_evt, elements) {
+          if (elements.length) {
+            const s = points[elements[0].index].session;
+            showSession(s.uuid || s.session_id);
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            borderColor: '#334155',
+            borderWidth: 1,
+            titleColor: '#f1f5f9',
+            bodyColor: '#94a3b8',
+            padding: 12,
+            callbacks: {
+              title(items) {
+                const s = points[items[0].dataIndex].session;
+                return fmtDate(s.start_time);
+              },
+              label(ctx) {
+                const s = points[ctx.dataIndex].session;
+                const saved = humanTime(s) - s.duration_minutes;
+                const sp    = speedup(s);
+                return [
+                  ` Cumulative saved: ${fmtDur(ctx.parsed.y)}`,
+                  ` This session: +${fmtDur(saved)}`,
+                  ` AI time: ${fmtDur(s.duration_minutes)}  ·  Human est: ${fmtDur(humanTime(s))}`,
+                  ` Speedup: ${sp.toFixed(1)}×  ·  ${s.achievements.length} achievement${s.achievements.length !== 1 ? 's' : ''}`,
+                  ...(s.author ? [` Author: ${s.author}`] : []),
+                ];
+              },
+              afterBody() { return ['', ' Click to open session ↗']; }
             }
           }
         },
@@ -677,7 +1043,7 @@
           },
           y: {
             grid: { color: 'rgba(51,65,85,0.5)' },
-            ticks: { color: '#94a3b8', font: { size: 11 }, callback: v => v + ' min' },
+            ticks: { color: '#94a3b8', font: { size: 11 }, callback: v => fmtDur(v) },
             beginAtZero: true
           }
         }
@@ -731,14 +1097,34 @@
     const ht = humanTime(s);
     const sv = ht - s.duration_minutes;
 
+    // Build category summary for this session
+    const catTally = {};
+    for (const a of s.achievements) {
+      const cat = getCategory(a);
+      if (!catTally[cat.id]) catTally[cat.id] = { cat, saved: 0, count: 0 };
+      catTally[cat.id].saved += a.estimated_human_time_minutes || 0;
+      catTally[cat.id].count += 1;
+    }
+    const catSummaryHTML = Object.values(catTally)
+      .sort((a, b) => b.saved - a.saved)
+      .map(({ cat, saved, count }) =>
+        `<span class="cat-badge" style="background:${cat.dim};color:${cat.color}">
+           ● ${esc(cat.label)} · ${esc(fmtDur(saved))}
+         </span>`)
+      .join('');
+
     const achievementsHTML = s.achievements.map((a, i) => {
+      const cat      = getCategory(a);
       const created  = (a.files_created  || []).map(f => `<span class="file-chip created">+ ${esc(f)}</span>`).join('');
       const modified = (a.files_modified || []).map(f => `<span class="file-chip modified">~ ${esc(f)}</span>`).join('');
       const hasFiles = created || modified;
 
       return `
         <div class="achievement-card">
-          <div class="achievement-num">Achievement ${i + 1} of ${s.achievements.length}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="achievement-num" style="margin-bottom:0">Achievement ${i + 1} of ${s.achievements.length}</div>
+            <span class="cat-badge" style="background:${cat.dim};color:${cat.color}">● ${esc(cat.label)}</span>
+          </div>
           <div class="achievement-desc">${esc(a.description)}</div>
           <div class="achievement-footer">
             ${hasFiles ? `<div class="files-row">${created}${modified}</div>` : ''}
@@ -789,6 +1175,9 @@
 
       <div class="speedup-banner">⚡ ${esc(s.ai_speedup)}</div>
 
+      <div class="section-label" style="margin-bottom:10px;">By Category</div>
+      <div class="cat-summary" style="margin-bottom:24px">${catSummaryHTML}</div>
+
       <div class="section-label" style="margin-bottom:14px;">Achievements</div>
       ${achievementsHTML}
     `;
@@ -806,13 +1195,44 @@
 
   // ── Init ────────────────────────────────────────────────────────────────────
 
+  function pickDefaultPeriod() {
+    const ORDER = ['today', '3d', 'week', 'month', '3m', '6m', 'year', 'all'];
+    const DAY   = 86400000;
+    const cutoffs = {
+      today: () => { const d = new Date(); d.setHours(0,0,0,0); return d; },
+      '3d':  () => new Date(Date.now() - 3   * DAY),
+      week:  () => new Date(Date.now() - 7   * DAY),
+      month: () => new Date(Date.now() - 30  * DAY),
+      '3m':  () => new Date(Date.now() - 90  * DAY),
+      '6m':  () => new Date(Date.now() - 180 * DAY),
+      year:  () => new Date(Date.now() - 365 * DAY),
+      all:   () => null,
+    };
+    for (const period of ORDER) {
+      const cutoff = cutoffs[period]();
+      const hasData = cutoff
+        ? sessions.some(s => new Date(s.start_time) >= cutoff)
+        : sessions.length > 0;
+      if (hasData) {
+        filterPeriod = period;
+        const btn = document.querySelector(`.period-pill[data-period="${period}"]`);
+        document.querySelectorAll('.period-pill').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        return;
+      }
+    }
+  }
+
   async function init() {
     try {
       const res = await fetch('/api/sessions');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       sessions = await res.json();
       populateAuthors();
+      pickDefaultPeriod();
+      renderLastSessionNote();
       renderStats();
+      renderCategories();
       renderChart();
       renderSessions();
     } catch (err) {

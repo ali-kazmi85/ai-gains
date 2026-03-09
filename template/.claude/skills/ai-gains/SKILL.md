@@ -49,7 +49,18 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
 
 6. For each achievement, estimate how long a human developer would take to do the same work without AI assistance.
 
-7. Write the updated JSON back to `.ai-gains/<start_utc_timestamp>_<uuid>.json`, preserving existing fields. The JSON structure should look like this:
+7. For each achievement, assign a `category` from this list — pick the one that best describes the primary nature of the work:
+   - `bug-fix` — fixing a broken or incorrect behaviour
+   - `debugging` — diagnosing, tracing or reproducing a problem (without necessarily fixing it yet)
+   - `enhancement` — adding or improving a feature, refactoring, or extending functionality
+   - `research` — investigating options, reviewing code/docs, evaluating approaches, visual review
+   - `documentation` — writing or updating docs, comments, specs, READMEs
+   - `testing` — writing or executing tests, validating functionality
+   - `refactoring` — restructuring existing code without changing its external behavior
+   - `ui-ux` — designing or improving user interfaces and user experiences
+   - `other` — anything that doesn't fit the above
+
+8. Write the updated JSON back to `.ai-gains/<start_utc_timestamp>_<uuid>.json`, preserving existing fields. The JSON structure should look like this:
 
 ```json
 {
@@ -61,7 +72,8 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
   "achievements": [
     {
       "description": "<what was done>",
-      "estimated_human_time_minutes": "<number>"
+      "estimated_human_time_minutes": "<number>",
+      "category": "<bug-fix | debugging | enhancement | research | documentation | testing | refactoring | ui-ux | other>"
     }
   ],
   "ai_speedup": "<summary of time saved vs human>"
