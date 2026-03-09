@@ -1,5 +1,6 @@
 'use strict';
 const fs = require('fs');
+const readline = require('readline');
 
 const transcriptPath = process.argv[2];
 if (!transcriptPath) {
@@ -8,12 +9,10 @@ if (!transcriptPath) {
 }
 
 const CHUNK_SIZE = 4096;
-const fd = fs.openSync(transcriptPath, 'r');
-const { size } = fs.fstatSync(fd);
 
-// Scan from the start for the first entry with a timestamp
+// Scan from the start for the first entry with a top-level timestamp
 function findFirstTimestamp() {
-  const rl = require('readline').createInterface({
+  const rl = readline.createInterface({
     input: fs.createReadStream(transcriptPath),
     crlfDelay: Infinity
   });
@@ -23,8 +22,8 @@ function findFirstTimestamp() {
       try {
         const entry = JSON.parse(line);
         if (entry.timestamp) {
-          rl.close();
           resolve(entry.timestamp);
+          rl.close();
         }
       } catch {}
     });
@@ -32,8 +31,10 @@ function findFirstTimestamp() {
   });
 }
 
-// Scan from the end for the last entry with a timestamp
+// Scan from the end for the last entry with a top-level timestamp
 function findLastTimestamp() {
+  const fd = fs.openSync(transcriptPath, 'r');
+  const { size } = fs.fstatSync(fd);
   let offset = size;
   let remainder = '';
   let lastTimestamp = null;
@@ -66,10 +67,8 @@ function findLastTimestamp() {
 }
 
 (async () => {
-  const [start_time, end_time] = await Promise.all([
-    findFirstTimestamp(),
-    Promise.resolve(findLastTimestamp())
-  ]);
+  const start_time = await findFirstTimestamp();
+  const end_time = findLastTimestamp();
 
   if (!start_time || !end_time) {
     console.error('Could not extract timestamps from transcript');
