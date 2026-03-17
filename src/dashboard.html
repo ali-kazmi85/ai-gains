@@ -4,35 +4,58 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Gains</title>
+  <script>/* Restore theme before paint to avoid flash */
+    (function(){var t=localStorage.getItem('ai-gains-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:           #0f172a;
-      --surface:      #1e293b;
-      --surface-2:    #263348;
-      --border:       #334155;
-      --text:         #f1f5f9;
-      --muted:        #94a3b8;
-      --blue:         #3b82f6;
-      --blue-dim:     rgba(59,130,246,0.12);
-      --green:        #22c55e;
-      --green-dim:    rgba(34,197,94,0.12);
-      --orange:       #f97316;
-      --purple:       #a855f7;
-      --purple-dim:   rgba(168,85,247,0.12);
-      --yellow:       #fbbf24;
-      --yellow-dim:   rgba(251,191,36,0.12);
-      --radius:       10px;
+      --bg:            #0c0c0e;
+      --surface:       #131316;
+      --surface-2:     #1a1a1f;
+      --surface-3:     #222228;
+      --border:        #28282f;
+      --border-bright: #3a3a45;
+      --text:          #e8e8f0;
+      --muted:         #6b6b80;
+      --muted-2:       #45455a;
+      --amber:         #f5a623;
+      --amber-dim:     rgba(245,166,35,0.10);
+      --amber-glow:    rgba(245,166,35,0.20);
+      --teal:          #00d4aa;
+      --teal-dim:      rgba(0,212,170,0.10);
+      /* Semantic mappings — keep existing JS references working */
+      --blue:          #7b8cff;
+      --blue-dim:      rgba(123,140,255,0.10);
+      --green:         #3ddc84;
+      --green-dim:     rgba(61,220,132,0.10);
+      --orange:        #f5a623;
+      --purple:        #c084fc;
+      --purple-dim:    rgba(192,132,252,0.10);
+      --yellow:        #fbbf24;
+      --yellow-dim:    rgba(251,191,36,0.10);
+      --radius:        8px;
+      --radius-sm:     5px;
     }
 
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'DM Sans', -apple-system, sans-serif;
       min-height: 100vh;
       line-height: 1.6;
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.011) 2px,
+        rgba(255,255,255,0.011) 4px
+      );
     }
 
     .container {
@@ -44,11 +67,13 @@
     /* ── Header ── */
     header {
       border-bottom: 1px solid var(--border);
-      padding: 18px 0;
-      margin-bottom: 36px;
+      padding: 16px 0;
+      margin-bottom: 32px;
       position: sticky;
       top: 0;
-      background: var(--bg);
+      background: rgba(12,12,14,0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       z-index: 10;
     }
 
@@ -62,11 +87,13 @@
     }
 
     .logo {
-      font-size: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
       font-weight: 700;
       letter-spacing: -0.3px;
+      color: var(--text);
     }
-    .logo .accent { color: var(--blue); }
+    .logo .accent { color: var(--amber); }
 
     /* ── Filter bar ── */
     .filter-bar {
@@ -79,7 +106,7 @@
 
     .filter-select {
       appearance: none;
-      background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+      background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b80' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
       border: 1px solid var(--border);
       border-radius: 7px;
       color: var(--text);
@@ -103,17 +130,20 @@
       border-radius: 6px;
       color: var(--muted);
       cursor: pointer;
-      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
       padding: 5px 11px;
       transition: all 0.12s;
       white-space: nowrap;
     }
-    .period-pill:hover { border-color: var(--blue); color: var(--blue); }
+    .period-pill:hover { border-color: var(--amber); color: var(--amber); }
     .period-pill.active {
-      background: var(--blue-dim);
-      border-color: var(--blue);
-      color: var(--blue);
+      background: var(--amber-dim);
+      border-color: var(--amber);
+      color: var(--amber);
       font-weight: 600;
+      box-shadow: 0 0 10px var(--amber-glow);
     }
 
     .filter-divider {
@@ -122,6 +152,62 @@
       background: var(--border);
       flex-shrink: 0;
     }
+
+    /* ── Repo dropdown ── */
+    .repo-dropdown { position: relative; }
+
+    .repo-dropdown-btn {
+      appearance: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      outline: none;
+      padding: 6px 11px;
+      transition: border-color 0.12s;
+      white-space: nowrap;
+    }
+    .repo-dropdown-btn:hover, .repo-dropdown-btn.open { border-color: var(--blue); color: var(--blue); }
+
+    .repo-dropdown-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 100;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      min-width: 220px;
+      max-height: 280px;
+      overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .repo-dropdown-panel.open { display: block; }
+
+    .repo-dropdown-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      padding: 0 4px;
+    }
+
+    .repo-check-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 4px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 13px;
+      transition: background 0.1s;
+    }
+    .repo-check-label:hover { background: var(--surface-2); }
+    .repo-check-label input[type="checkbox"] { cursor: pointer; accent-color: var(--blue); }
 
     /* ── Stats ── */
     .stats-grid {
@@ -139,22 +225,43 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px 22px;
+      padding: 20px 22px 18px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s cubic-bezier(0.16,1,0.3,1);
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .stat-card:nth-child(1)::before { background: var(--green); }
+    .stat-card:nth-child(2)::before { background: var(--blue); }
+    .stat-card:nth-child(3)::before { background: var(--purple); }
+    .stat-card:nth-child(4)::before { background: var(--amber); }
+    .stat-card:hover {
+      border-color: var(--border-bright);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
 
     .stat-label {
-      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
       text-transform: uppercase;
-      letter-spacing: 0.09em;
+      letter-spacing: 0.13em;
       color: var(--muted);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
+    .stat-label::before { content: '▸ '; color: var(--muted-2); }
 
     .stat-value {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 30px;
       font-weight: 700;
       line-height: 1;
-      letter-spacing: -0.5px;
+      letter-spacing: -1px;
     }
 
     .c-blue   { color: var(--blue); }
@@ -167,16 +274,27 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 22px 24px;
-      margin-bottom: 24px;
+      padding: 20px 22px;
+      margin-bottom: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
     }
 
     .section-label {
-      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
       text-transform: uppercase;
-      letter-spacing: 0.09em;
+      letter-spacing: 0.13em;
       color: var(--muted);
-      margin-bottom: 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
     }
 
     .chart-wrap {
@@ -187,16 +305,27 @@
 
     /* ── Session cards ── */
     .sessions-label {
-      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
       text-transform: uppercase;
-      letter-spacing: 0.09em;
+      letter-spacing: 0.13em;
       color: var(--muted);
       margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sessions-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
     }
 
     .session-card {
       background: var(--surface);
       border: 1px solid var(--border);
+      border-left: 3px solid transparent;
       border-radius: var(--radius);
       padding: 16px 20px;
       margin-bottom: 10px;
@@ -204,13 +333,17 @@
       display: flex;
       align-items: flex-start;
       gap: 14px;
-      transition: background 0.12s, border-color 0.12s, transform 0.1s;
+      transition: background 0.18s ease, border-color 0.18s ease,
+                  border-left-color 0.18s ease, box-shadow 0.18s ease,
+                  transform 0.15s cubic-bezier(0.16,1,0.3,1);
     }
 
     .session-card:hover {
       background: var(--surface-2);
-      border-color: var(--blue);
-      transform: translateY(-1px);
+      border-color: var(--border-bright);
+      border-left-color: var(--amber);
+      box-shadow: -2px 0 16px rgba(245,166,35,0.07);
+      transform: translateX(2px);
     }
 
     .session-icon {
@@ -237,8 +370,9 @@
     }
 
     .session-date {
+      font-family: 'JetBrains Mono', monospace;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .pill {
@@ -252,9 +386,10 @@
       color: var(--muted);
     }
 
-    .pill.branch  { border-color: var(--purple); color: var(--purple); background: var(--purple-dim); font-family: monospace; }
-    .pill.speedup { border-color: var(--green);  color: var(--green);  background: var(--green-dim);  font-weight: 600; }
+    .pill.branch  { border-color: var(--purple); color: var(--purple); background: var(--purple-dim); font-family: 'JetBrains Mono', monospace; }
+    .pill.speedup { border-color: var(--green);  color: var(--green);  background: var(--green-dim);  font-weight: 600; box-shadow: 0 0 8px rgba(61,220,132,0.12); }
     .pill.author  { border-color: var(--border); color: var(--muted);  background: transparent; }
+    .pill.repo    { border-color: rgba(123,140,255,0.4); color: var(--blue); background: var(--blue-dim); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 
     .session-meta {
       display: flex;
@@ -273,16 +408,16 @@
 
     .file-chip {
       background: var(--blue-dim);
-      border: 1px solid rgba(59,130,246,0.25);
+      border: 1px solid rgba(123,140,255,0.25);
       border-radius: 4px;
       padding: 1px 7px;
       font-size: 11px;
       color: var(--blue);
-      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
     }
 
-    .file-chip.created  { background: var(--green-dim);  border-color: rgba(34,197,94,0.3);  color: var(--green);  }
-    .file-chip.modified { background: var(--yellow-dim); border-color: rgba(251,191,36,0.3); color: var(--yellow); }
+    .file-chip.created  { background: var(--green-dim);  border-color: rgba(61,220,132,0.3);  color: var(--green);  }
+    .file-chip.modified { background: var(--yellow-dim); border-color: rgba(251,191,36,0.3);  color: var(--yellow); }
 
     .chevron {
       color: var(--muted);
@@ -322,7 +457,7 @@
     .detail-uuid {
       font-size: 12px;
       color: var(--muted);
-      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      font-family: 'JetBrains Mono', monospace;
       margin-bottom: 26px;
     }
 
@@ -341,14 +476,16 @@
     }
 
     .detail-stat-label {
-      font-size: 10.5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
       text-transform: uppercase;
-      letter-spacing: 0.09em;
+      letter-spacing: 0.13em;
       color: var(--muted);
       margin-bottom: 6px;
     }
 
     .detail-stat-value {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 20px;
       font-weight: 700;
     }
@@ -373,9 +510,10 @@
     }
 
     .achievement-num {
-      font-size: 10.5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
       text-transform: uppercase;
-      letter-spacing: 0.09em;
+      letter-spacing: 0.13em;
       color: var(--muted);
       margin-bottom: 10px;
     }
@@ -495,10 +633,143 @@
       margin-bottom: 18px;
     }
 
+    /* ── Leaderboard ── */
+    .lb-row {
+      display: grid;
+      align-items: center;
+      gap: 8px 12px;
+      padding: 9px 6px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.1s;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row:hover { background: var(--surface-2); }
+    .lb-row.lb-active { background: var(--blue-dim); }
+    .lb-row-5 { grid-template-columns: 28px 1fr 70px 110px 90px; }
+    .lb-row-4 { grid-template-columns: 28px 1fr 70px 110px; }
+
+    .lb-head {
+      display: grid;
+      align-items: center;
+      gap: 8px 12px;
+      padding: 0 6px 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    .lb-head-5 { grid-template-columns: 28px 1fr 70px 110px 90px; }
+    .lb-head-4 { grid-template-columns: 28px 1fr 70px 110px; }
+
+    .lb-rank {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .lb-name {
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .lb-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .lb-head-cell {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      color: var(--muted);
+      font-weight: 600;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .lb-head-cell:nth-child(2) { text-align: left; }
+
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 7px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Animations ── */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in {
+      animation: fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    /* ── Light theme ── */
+    [data-theme="light"] {
+      --bg:            #f5f4f0;
+      --surface:       #ffffff;
+      --surface-2:     #eeeee8;
+      --surface-3:     #e4e3dc;
+      --border:        #d8d7cf;
+      --border-bright: #b8b7af;
+      --text:          #18181e;
+      --muted:         #72727f;
+      --muted-2:       #ababba;
+      --amber:         #c47d0a;
+      --amber-dim:     rgba(196,125,10,0.10);
+      --amber-glow:    rgba(196,125,10,0.22);
+      --teal:          #00957a;
+      --teal-dim:      rgba(0,149,122,0.10);
+      --blue:          #4252c7;
+      --blue-dim:      rgba(66,82,199,0.10);
+      --green:         #0f9851;
+      --green-dim:     rgba(15,152,81,0.10);
+      --orange:        #c47d0a;
+      --purple:        #7e35c8;
+      --purple-dim:    rgba(126,53,200,0.10);
+      --yellow:        #a07010;
+      --yellow-dim:    rgba(160,112,16,0.10);
+    }
+    [data-theme="light"] body {
+      background-image: none;
+    }
+    [data-theme="light"] header {
+      background: rgba(245,244,240,0.88);
+    }
+    [data-theme="light"] .section {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 3px rgba(0,0,0,0.05);
+    }
+    [data-theme="light"] .session-card:hover {
+      box-shadow: -2px 0 16px rgba(196,125,10,0.10);
+    }
+
+    /* ── Theme toggle button ── */
+    .theme-toggle {
+      margin-left: auto;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      line-height: 1;
+      padding: 5px 8px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .theme-toggle:hover {
+      border-color: var(--amber);
+      color: var(--amber);
+      transform: rotate(20deg);
+    }
+    .theme-toggle:active { transform: rotate(40deg) scale(0.9); }
   </style>
 </head>
 <body>
@@ -508,6 +779,7 @@
   <header>
     <div class="header-inner">
       <div class="logo">AI <span class="accent">Gains</span> ⚡</div>
+      <button class="theme-toggle" id="theme-toggle-1" onclick="toggleTheme()" title="Toggle light / dark mode"></button>
     </div>
   </header>
 
@@ -517,6 +789,16 @@
       <select id="filter-author" class="filter-select" onchange="applyFilters()">
         <option value="">All authors</option>
       </select>
+      <div id="repo-dropdown-container" class="repo-dropdown" style="display:none">
+        <button id="repo-dropdown-btn" class="repo-dropdown-btn" onclick="toggleRepoDropdown()">All repos ▾</button>
+        <div id="repo-dropdown-panel" class="repo-dropdown-panel">
+          <div class="repo-dropdown-header">
+            <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.09em">Repos</span>
+            <a href="#" onclick="clearRepoFilter();return false" style="font-size:11px;color:var(--blue);text-decoration:none">Clear</a>
+          </div>
+          <div id="repo-checkbox-list"></div>
+        </div>
+      </div>
       <div class="filter-divider"></div>
       <div class="period-pills" id="period-pills">
         <button class="period-pill" data-period="today" onclick="setPeriod(this)">Today</button>
@@ -532,7 +814,11 @@
     <div id="last-session-note" style="font-size:12px;color:var(--muted);margin-bottom:20px;min-height:16px"></div>
 
     <!-- Stats -->
-    <div class="stats-grid">
+    <div class="stats-grid animate-in" style="animation-delay:0.05s">
+      <div class="stat-card">
+        <div class="stat-label">Time Saved</div>
+        <div class="stat-value c-green" id="stat-saved">—</div>
+      </div>
       <div class="stat-card">
         <div class="stat-label">Sessions</div>
         <div class="stat-value c-blue" id="stat-sessions">—</div>
@@ -540,10 +826,6 @@
       <div class="stat-card">
         <div class="stat-label">Achievements</div>
         <div class="stat-value c-purple" id="stat-achievements">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Time Saved</div>
-        <div class="stat-value c-green" id="stat-saved">—</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Avg Speedup</div>
@@ -555,8 +837,8 @@
     </div>
 
     <!-- Chart -->
-    <div class="section">
-      <div class="section-label">Cumulative Time Saved</div>
+    <div class="section animate-in" style="animation-delay:0.12s">
+      <div class="section-label">Time Saved per Session</div>
       <div class="chart-wrap">
         <canvas id="main-chart"></canvas>
       </div>
@@ -575,9 +857,18 @@
       </div>
     </div>
 
+    <!-- Category efficiency -->
+    <div id="cat-efficiency-section" style="display:none"></div>
+
+    <!-- Author leaderboard -->
+    <div id="author-leaderboard" style="display:none"></div>
+
+    <!-- Repo leaderboard -->
+    <div id="repo-leaderboard" style="display:none"></div>
+
     <!-- Sessions list -->
-    <div class="sessions-label">Sessions</div>
-    <div id="sessions-list">
+    <div class="sessions-label animate-in" style="animation-delay:0.18s">Sessions</div>
+    <div id="sessions-list" class="animate-in" style="animation-delay:0.18s">
       <div class="placeholder"><div class="placeholder-icon">⏳</div>Loading…</div>
     </div>
   </div>
@@ -588,6 +879,7 @@
   <header>
     <div class="header-inner">
       <div class="logo">AI <span class="accent">Gains</span> ⚡</div>
+      <button class="theme-toggle" id="theme-toggle-2" onclick="toggleTheme()" title="Toggle light / dark mode"></button>
     </div>
   </header>
 
@@ -600,11 +892,14 @@
 <script>
   'use strict';
 
-  let sessions = [];
-  let chart    = null;
-  let catChart = null;
-  let filterAuthor = '';
-  let filterPeriod = 'all'; // overwritten by pickDefaultPeriod() after load
+  let sessions      = [];
+  let chart         = null;
+  let catChart      = null;
+  let filterAuthor  = '';
+  let filterPeriod  = 'all'; // overwritten by pickDefaultPeriod() after load
+  let filterRepos   = new Set();
+  let isGitHubMode  = false;
+  let availableRepos = [];
 
   // ── Categories ───────────────────────────────────────────────────────────────
 
@@ -699,6 +994,10 @@
       result = result.filter(s => s.author === filterAuthor);
     }
 
+    if (filterRepos.size > 0) {
+      result = result.filter(s => filterRepos.has(s.repo));
+    }
+
     if (filterPeriod !== 'all') {
       const now = Date.now();
       const DAY = 86400000;
@@ -732,6 +1031,8 @@
     renderLastSessionNote();
     renderStats();
     renderCategories();
+    renderCategoryEfficiency();
+    renderLeaderboards();
     renderChart();
     renderSessions();
   }
@@ -751,6 +1052,75 @@
       opt.textContent = a;
       sel.appendChild(opt);
     });
+  }
+
+  function populateRepos() {
+    const container = document.getElementById('repo-dropdown-container');
+    if (!container) return;
+    container.style.display = '';
+    const list = document.getElementById('repo-checkbox-list');
+    list.innerHTML = availableRepos.map(repo => `
+      <label class="repo-check-label">
+        <input type="checkbox" class="repo-checkbox" value="${esc(repo)}" onchange="toggleRepo(this)">
+        <span>${esc(repo)}</span>
+      </label>
+    `).join('');
+  }
+
+  function toggleRepo(checkbox) {
+    if (checkbox.checked) {
+      filterRepos.add(checkbox.value);
+    } else {
+      filterRepos.delete(checkbox.value);
+    }
+    updateRepoDropdownLabel();
+    applyFilters();
+  }
+
+  function updateRepoDropdownLabel() {
+    const btn = document.getElementById('repo-dropdown-btn');
+    btn.textContent = filterRepos.size === 0
+      ? 'All repos ▾'
+      : `${filterRepos.size} repo${filterRepos.size !== 1 ? 's' : ''} selected ▾`;
+  }
+
+  function clearRepoFilter() {
+    filterRepos = new Set();
+    document.querySelectorAll('.repo-checkbox').forEach(cb => { cb.checked = false; });
+    updateRepoDropdownLabel();
+    applyFilters();
+  }
+
+  function toggleRepoDropdown() {
+    const panel = document.getElementById('repo-dropdown-panel');
+    const btn   = document.getElementById('repo-dropdown-btn');
+    const isOpen = panel.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+  }
+
+  function setAuthorFilter(author) {
+    const sel = document.getElementById('filter-author');
+    if (filterAuthor === author) {
+      filterAuthor = '';
+      sel.value = '';
+    } else {
+      filterAuthor = author;
+      sel.value = author;
+    }
+    applyFilters();
+  }
+
+  function setRepoFilter(repo) {
+    if (filterRepos.has(repo)) {
+      filterRepos.delete(repo);
+    } else {
+      filterRepos.add(repo);
+    }
+    document.querySelectorAll('.repo-checkbox').forEach(cb => {
+      if (cb.value === repo) cb.checked = filterRepos.has(repo);
+    });
+    updateRepoDropdownLabel();
+    applyFilters();
   }
 
   // ── Formatters ──────────────────────────────────────────────────────────────
@@ -896,11 +1266,11 @@
         const cx = (left + right) / 2, cy = (top + bottom) / 2;
         ctx.save();
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#f1f5f9';
-        ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.fillStyle = tc('#e8e8f0', '#18181e');
+        ctx.font = '700 16px JetBrains Mono, monospace';
         ctx.fillText(fmtDur(totalSaved), cx, cy - 9);
-        ctx.fillStyle = '#64748b';
-        ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.fillStyle = tc('#6b6b80', '#72727f');
+        ctx.font = '10px JetBrains Mono, monospace';
         ctx.fillText('TIME SAVED', cx, cy + 10);
         ctx.restore();
       }
@@ -914,7 +1284,7 @@
         datasets: [{
           data:            sorted.map(r => r.saved),
           backgroundColor: sorted.map(r => r.cat.color),
-          borderColor:     '#1e293b',
+          borderColor:     tc('#0c0c0e', '#f5f4f0'),
           borderWidth:     3,
           hoverOffset:     6,
         }]
@@ -926,11 +1296,11 @@
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#1e293b',
-            borderColor: '#334155',
+            backgroundColor: tc('#131316', '#ffffff'),
+            borderColor: tc('#28282f', '#d8d7cf'),
             borderWidth: 1,
-            titleColor: '#f1f5f9',
-            bodyColor: '#94a3b8',
+            titleColor: tc('#e8e8f0', '#18181e'),
+            bodyColor: tc('#6b6b80', '#72727f'),
             padding: 10,
             callbacks: {
               label(ctx) {
@@ -960,6 +1330,159 @@
     }).join('');
   }
 
+  // ── Render leaderboards ──────────────────────────────────────────────────────
+
+  function renderLeaderboards() {
+    renderAuthorLeaderboard();
+    renderRepoLeaderboard();
+  }
+
+  function renderAuthorLeaderboard() {
+    const container = document.getElementById('author-leaderboard');
+    const data = getFiltered();
+
+    const authorMap = {};
+    for (const s of data) {
+      const author = s.author || null;
+      if (!author) continue;
+      if (!authorMap[author]) authorMap[author] = { sessions: 0, totalSaved: 0, totalHuman: 0, totalAI: 0 };
+      authorMap[author].sessions   += 1;
+      authorMap[author].totalHuman += humanTime(s);
+      authorMap[author].totalAI    += s.duration_minutes;
+      authorMap[author].totalSaved += humanTime(s) - s.duration_minutes;
+    }
+
+    const authors = Object.entries(authorMap)
+      .map(([author, stats]) => ({ author, ...stats }))
+      .sort((a, b) => b.totalSaved - a.totalSaved);
+
+    if (authors.length < 2) { container.style.display = 'none'; return; }
+    container.style.display = '';
+
+    const rows = authors.map((r, i) => {
+      const avgSpeedup = r.totalAI > 0 ? (r.totalHuman / r.totalAI).toFixed(1) : '—';
+      const isActive   = filterAuthor === r.author;
+      return `
+        <div class="lb-row lb-row-5${isActive ? ' lb-active' : ''}" onclick="setAuthorFilter('${esc(r.author)}')">
+          <span class="lb-rank">${i + 1}</span>
+          <span class="lb-name">${esc(r.author)}</span>
+          <span class="lb-val">${r.sessions}</span>
+          <span class="lb-val c-green">${esc(fmtDur(r.totalSaved))}</span>
+          <span class="lb-val c-orange">${avgSpeedup}×</span>
+        </div>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="section">
+        <div class="section-label">Author Leaderboard</div>
+        <div class="lb-head lb-head-5">
+          <span class="lb-rank">#</span>
+          <span class="lb-head-cell" style="text-align:left">Author</span>
+          <span class="lb-head-cell">Sessions</span>
+          <span class="lb-head-cell">Time Saved</span>
+          <span class="lb-head-cell">Avg Speedup</span>
+        </div>
+        ${rows}
+      </div>`;
+  }
+
+  function renderRepoLeaderboard() {
+    const container = document.getElementById('repo-leaderboard');
+    if (!isGitHubMode || availableRepos.length <= 1) { container.style.display = 'none'; return; }
+
+    const data = getFiltered();
+    const repoMap = {};
+    for (const s of data) {
+      if (!s.repo) continue;
+      if (!repoMap[s.repo]) repoMap[s.repo] = { sessions: 0, totalSaved: 0 };
+      repoMap[s.repo].sessions   += 1;
+      repoMap[s.repo].totalSaved += humanTime(s) - s.duration_minutes;
+    }
+
+    const repos = Object.entries(repoMap)
+      .map(([repo, stats]) => ({ repo, ...stats }))
+      .sort((a, b) => b.totalSaved - a.totalSaved);
+
+    if (!repos.length) { container.style.display = 'none'; return; }
+    container.style.display = '';
+
+    const rows = repos.map((r, i) => {
+      const isActive = filterRepos.has(r.repo);
+      return `
+        <div class="lb-row lb-row-4${isActive ? ' lb-active' : ''}" onclick="setRepoFilter('${esc(r.repo)}')">
+          <span class="lb-rank">${i + 1}</span>
+          <span class="lb-name">${esc(r.repo)}</span>
+          <span class="lb-val">${r.sessions}</span>
+          <span class="lb-val c-green">${esc(fmtDur(r.totalSaved))}</span>
+        </div>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="section">
+        <div class="section-label">Repo Leaderboard</div>
+        <div class="lb-head lb-head-4">
+          <span class="lb-rank">#</span>
+          <span class="lb-head-cell" style="text-align:left">Repo</span>
+          <span class="lb-head-cell">Sessions</span>
+          <span class="lb-head-cell">Time Saved</span>
+        </div>
+        ${rows}
+      </div>`;
+  }
+
+  // ── Render category efficiency ───────────────────────────────────────────────
+
+  function renderCategoryEfficiency() {
+    const container = document.getElementById('cat-efficiency-section');
+    const data = getFiltered();
+    if (!data.length) { container.style.display = 'none'; return; }
+
+    // Accumulate per-category stats, allocating session AI time proportionally
+    const catStats = {};
+    for (const s of data) {
+      const totalHumanInSession = humanTime(s);
+      for (const a of s.achievements) {
+        const cat = getCategory(a);
+        if (!catStats[cat.id]) catStats[cat.id] = { cat, totalHuman: 0, totalAI: 0, timeSaved: 0, sessionIds: new Set() };
+        const mins = a.estimated_human_time_minutes || 0;
+        const fraction = totalHumanInSession > 0 ? mins / totalHumanInSession : 1 / s.achievements.length;
+        catStats[cat.id].totalHuman += mins;
+        catStats[cat.id].totalAI   += s.duration_minutes * fraction;
+        catStats[cat.id].timeSaved += mins;
+        catStats[cat.id].sessionIds.add(s.uuid || s.session_id);
+      }
+    }
+
+    const sorted = Object.values(catStats)
+      .map(c => ({ ...c, sessions: c.sessionIds.size, avgSpeedup: c.totalAI > 0 ? c.totalHuman / c.totalAI : 0 }))
+      .sort((a, b) => b.avgSpeedup - a.avgSpeedup);
+
+    if (sorted.length < 2) { container.style.display = 'none'; return; }
+    container.style.display = '';
+
+    const rows = sorted.map((r, i) => `
+      <div class="lb-row" style="grid-template-columns:28px 1fr 60px 110px 80px">
+        <span class="lb-rank">${i + 1}</span>
+        <span class="lb-name"><span class="cat-badge" style="background:${r.cat.dim};color:${r.cat.color}">● ${esc(r.cat.label)}</span></span>
+        <span class="lb-val">${r.sessions}</span>
+        <span class="lb-val c-green">${esc(fmtDur(r.timeSaved))}</span>
+        <span class="lb-val c-orange">${r.avgSpeedup.toFixed(1)}×</span>
+      </div>`).join('');
+
+    container.innerHTML = `
+      <div class="section">
+        <div class="section-label">Where AI Helps Most</div>
+        <div class="lb-head" style="grid-template-columns:28px 1fr 60px 110px 80px">
+          <span class="lb-rank">#</span>
+          <span class="lb-head-cell" style="text-align:left">Category</span>
+          <span class="lb-head-cell">Sessions</span>
+          <span class="lb-head-cell">Time Saved</span>
+          <span class="lb-head-cell">Avg Speedup</span>
+        </div>
+        ${rows}
+      </div>`;
+  }
+
   // ── Render chart ────────────────────────────────────────────────────────────
 
   function renderChart() {
@@ -969,81 +1492,111 @@
 
     if (!sorted.length) return;
 
-    // Build cumulative time-saved values, keeping session reference per point
-    let cumulative = 0;
-    const points = sorted.map(s => {
-      cumulative += (humanTime(s) - s.duration_minutes);
-      return { x: fmtDateShort(s.start_time), y: cumulative, session: s };
+    // Per-session time saved (bar data)
+    const barData = sorted.map(s => ({
+      x: fmtDateShort(s.start_time),
+      y: Math.max(0, humanTime(s) - s.duration_minutes),
+      session: s,
+    }));
+
+    // 5-session rolling average (line data)
+    const rollingData = sorted.map((_, i) => {
+      const window = sorted.slice(Math.max(0, i - 4), i + 1);
+      const avg = window.reduce((sum, w) => sum + Math.max(0, humanTime(w) - w.duration_minutes), 0) / window.length;
+      return Math.round(avg);
     });
 
     const canvas = document.getElementById('main-chart');
 
     chart = new Chart(canvas.getContext('2d'), {
-      type: 'line',
+      type: 'bar',
       data: {
-        labels: points.map(p => p.x),
-        datasets: [{
-          label: 'Time Saved (min)',
-          data: points.map(p => p.y),
-          borderColor: 'rgb(34,197,94)',
-          backgroundColor: 'rgba(34,197,94,0.08)',
-          borderWidth: 2.5,
-          pointBackgroundColor: 'rgb(34,197,94)',
-          pointBorderColor: '#0f172a',
-          pointBorderWidth: 2,
-          pointRadius: 5,
-          pointHoverRadius: 7,
-          fill: true,
-          tension: 0.35,
-        }]
+        labels: barData.map(p => p.x),
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Time Saved',
+            data: barData.map(p => p.y),
+            backgroundColor: barData.map(p => speedup(p.session) > 15 ? 'rgba(251,191,36,0.55)' : 'rgba(34,197,94,0.5)'),
+            borderColor:     barData.map(p => speedup(p.session) > 15 ? 'rgb(251,191,36)'       : 'rgb(34,197,94)'),
+            borderWidth: 1,
+            borderRadius: 3,
+            order: 2,
+          },
+          {
+            type: 'line',
+            label: '5-session avg',
+            data: rollingData,
+            borderColor: 'rgba(123,140,255,0.8)',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0.3,
+            order: 1,
+          },
+        ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         onClick(_evt, elements) {
-          if (elements.length) {
-            const s = points[elements[0].index].session;
+          if (!elements.length) return;
+          const barEl = elements.find(e => e.datasetIndex === 0);
+          if (barEl) {
+            const s = barData[barEl.index].session;
             showSession(s.uuid || s.session_id);
           }
         },
         plugins: {
-          legend: { display: false },
+          legend: {
+            display: sorted.length >= 3,
+            labels: { color: tc('#6b6b80', '#72727f'), boxWidth: 12, font: { size: 11 }, padding: 16 },
+          },
           tooltip: {
-            backgroundColor: '#1e293b',
-            borderColor: '#334155',
+            backgroundColor: tc('#131316', '#ffffff'),
+            borderColor: tc('#28282f', '#d8d7cf'),
             borderWidth: 1,
-            titleColor: '#f1f5f9',
-            bodyColor: '#94a3b8',
+            titleColor: tc('#e8e8f0', '#18181e'),
+            bodyColor: tc('#6b6b80', '#72727f'),
             padding: 12,
             callbacks: {
               title(items) {
-                const s = points[items[0].dataIndex].session;
-                return fmtDate(s.start_time);
+                const idx = items[0].dataIndex;
+                const s = barData[idx]?.session;
+                return s ? fmtDate(s.start_time) : '';
               },
               label(ctx) {
-                const s = points[ctx.dataIndex].session;
+                if (ctx.dataset.label === '5-session avg') {
+                  return ` 5-session avg: ${fmtDur(ctx.parsed.y)}`;
+                }
+                const s = barData[ctx.dataIndex].session;
                 const saved = humanTime(s) - s.duration_minutes;
                 const sp    = speedup(s);
+                const outlier = sp > 15 ? ' ⚠ High estimate' : '';
                 return [
-                  ` Cumulative saved: ${fmtDur(ctx.parsed.y)}`,
-                  ` This session: +${fmtDur(saved)}`,
+                  ` Saved: +${fmtDur(saved)}`,
                   ` AI time: ${fmtDur(s.duration_minutes)}  ·  Human est: ${fmtDur(humanTime(s))}`,
-                  ` Speedup: ${sp.toFixed(1)}×  ·  ${s.achievements.length} achievement${s.achievements.length !== 1 ? 's' : ''}`,
+                  ` Speedup: ${sp.toFixed(1)}×${outlier}  ·  ${s.achievements.length} achievement${s.achievements.length !== 1 ? 's' : ''}`,
                   ...(s.author ? [` Author: ${s.author}`] : []),
+                  ...(isGitHubMode && s.repo ? [` Repo: ${s.repo}`] : []),
                 ];
               },
-              afterBody() { return ['', ' Click to open session ↗']; }
+              afterBody(items) {
+                if (items[0].dataset.label !== '5-session avg') return ['', ' Click to open session ↗'];
+                return [];
+              },
             }
           }
         },
         scales: {
           x: {
-            grid: { color: 'rgba(51,65,85,0.5)' },
-            ticks: { color: '#94a3b8', font: { size: 11 } }
+            grid: { color: tc('rgba(40,40,47,0.8)', 'rgba(216,215,207,0.8)') },
+            ticks: { color: tc('#6b6b80', '#72727f'), font: { size: 11 } }
           },
           y: {
-            grid: { color: 'rgba(51,65,85,0.5)' },
-            ticks: { color: '#94a3b8', font: { size: 11 }, callback: v => fmtDur(v) },
+            grid: { color: tc('rgba(40,40,47,0.8)', 'rgba(216,215,207,0.8)') },
+            ticks: { color: tc('#6b6b80', '#72727f'), font: { size: 11 }, callback: v => fmtDur(v) },
             beginAtZero: true
           }
         }
@@ -1062,20 +1615,22 @@
       return;
     }
 
-    el.innerHTML = data.map(s => {
+    el.innerHTML = data.map((s, i) => {
       const sp    = speedup(s);
       const saved = humanTime(s) - s.duration_minutes;
-      const authorPill = s.author ? `<span class="pill author">✉ ${esc(s.author)}</span>` : '';
-      const branchPill = s.branch ? `<span class="pill branch">⎇ ${esc(s.branch)}</span>` : '';
+      const authorPill  = s.author ? `<span class="pill author">✉ ${esc(s.author)}</span>` : '';
+      const repoPill    = (isGitHubMode && s.repo) ? `<span class="pill repo">⎇ ${esc(s.repo)}</span>` : '';
+      const branchPill  = s.branch ? `<span class="pill branch">⎇ ${esc(s.branch)}</span>` : '';
+      const outlierFlag = sp > 15 ? `<span title="High speedup estimate — verify manually" style="cursor:help;font-size:12px;color:var(--yellow);line-height:1">⚠</span>` : '';
 
       return `
-        <div class="session-card" onclick="showSession('${esc(s.uuid || s.session_id)}')">
+        <div class="session-card animate-in" style="animation-delay:${Math.min(i * 0.04, 0.28)}s" onclick="showSession('${esc(s.uuid || s.session_id)}')">
           <div class="session-icon">⚡</div>
           <div class="session-body">
             <div class="session-top">
               <span class="session-date">${esc(fmtDate(s.start_time))}</span>
-              ${authorPill}${branchPill}
-              <span class="pill speedup">${sp.toFixed(1)}× faster</span>
+              ${authorPill}${repoPill}${branchPill}
+              <span class="pill speedup">${sp.toFixed(1)}× faster</span>${outlierFlag}
             </div>
             <div class="session-meta">
               <span>⏱ ${esc(fmtDur(s.duration_minutes))}</span>
@@ -1113,11 +1668,16 @@
          </span>`)
       .join('');
 
+    const perAchievementAITime = s.duration_minutes / Math.max(s.achievements.length, 1);
     const achievementsHTML = s.achievements.map((a, i) => {
-      const cat      = getCategory(a);
-      const created  = (a.files_created  || []).map(f => `<span class="file-chip created">+ ${esc(f)}</span>`).join('');
-      const modified = (a.files_modified || []).map(f => `<span class="file-chip modified">~ ${esc(f)}</span>`).join('');
-      const hasFiles = created || modified;
+      const cat        = getCategory(a);
+      const created    = (a.files_created  || []).map(f => `<span class="file-chip created">+ ${esc(f)}</span>`).join('');
+      const modified   = (a.files_modified || []).map(f => `<span class="file-chip modified">~ ${esc(f)}</span>`).join('');
+      const hasFiles   = created || modified;
+      const achSpeedup = perAchievementAITime > 0 ? (a.estimated_human_time_minutes || 0) / perAchievementAITime : 0;
+      const outlierFlag = achSpeedup > 15
+        ? `<span title="High estimate — verify manually" style="cursor:help;font-size:11px;color:var(--yellow);margin-left:4px">⚠</span>`
+        : '';
 
       return `
         <div class="achievement-card">
@@ -1128,7 +1688,7 @@
           <div class="achievement-desc">${esc(a.description)}</div>
           <div class="achievement-footer">
             ${hasFiles ? `<div class="files-row">${created}${modified}</div>` : ''}
-            <div class="time-est">≈ ${esc(fmtDur(a.estimated_human_time_minutes))} human est.</div>
+            <div class="time-est">≈ ${esc(fmtDur(a.estimated_human_time_minutes))} human est.${outlierFlag}</div>
           </div>
         </div>`;
     }).join('');
@@ -1142,6 +1702,11 @@
         <div class="detail-stat">
           <div class="detail-stat-label">Branch</div>
           <div class="detail-stat-value c-purple" style="font-size:16px;font-family:monospace">${esc(s.branch)}</div>
+        </div>` : '';
+    const repoStat = (isGitHubMode && s.repo) ? `
+        <div class="detail-stat">
+          <div class="detail-stat-label">Repo</div>
+          <div class="detail-stat-value c-blue" style="font-size:13px;font-family:monospace">${esc(s.repo)}</div>
         </div>` : '';
     const filesHTML = (s.files_touched || []).map(f => `<span class="file-chip">${esc(f)}</span>`).join('');
 
@@ -1166,7 +1731,7 @@
           <div class="detail-stat-label">Speedup</div>
           <div class="detail-stat-value c-orange">${sp.toFixed(1)}×</div>
         </div>
-        ${authorStat}${branchStat}
+        ${authorStat}${branchStat}${repoStat}
       </div>
 
       ${filesHTML ? `
@@ -1223,16 +1788,68 @@
     }
   }
 
+  // ── Theme ────────────────────────────────────────────────────────────────────
+
+  function isLight() {
+    return document.documentElement.getAttribute('data-theme') === 'light';
+  }
+
+  function tc(darkVal, lightVal) { // theme color helper
+    return isLight() ? lightVal : darkVal;
+  }
+
+  function updateThemeIcons() {
+    const icon = isLight() ? '☾' : '☀';
+    document.querySelectorAll('.theme-toggle').forEach(btn => { btn.textContent = icon; });
+  }
+
+  function toggleTheme() {
+    const newTheme = isLight() ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('ai-gains-theme', newTheme);
+    updateThemeIcons();
+    // Re-render charts with new color palette
+    applyFilters();
+  }
+
   async function init() {
+    // Close repo dropdown on outside click
+    document.addEventListener('click', (e) => {
+      const container = document.getElementById('repo-dropdown-container');
+      if (container && !container.contains(e.target)) {
+        document.getElementById('repo-dropdown-panel').classList.remove('open');
+        document.getElementById('repo-dropdown-btn').classList.remove('open');
+      }
+    });
+
+    updateThemeIcons();
+
     try {
+      // Detect GitHub mode
+      try {
+        const metaRes = await fetch('/api/meta');
+        if (metaRes.ok) {
+          const meta = await metaRes.json();
+          if (meta.mode === 'github') {
+            isGitHubMode   = true;
+            availableRepos = meta.repos || [];
+          }
+        }
+      } catch {
+        // local mode — /api/meta doesn't exist
+      }
+
       const res = await fetch('/api/sessions');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       sessions = await res.json();
       populateAuthors();
+      if (isGitHubMode && availableRepos.length > 1) populateRepos();
       pickDefaultPeriod();
       renderLastSessionNote();
       renderStats();
       renderCategories();
+      renderCategoryEfficiency();
+      renderLeaderboards();
       renderChart();
       renderSessions();
     } catch (err) {
