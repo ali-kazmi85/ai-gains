@@ -117,4 +117,74 @@ function startServer(rootDir) {
   });
 }
 
-module.exports = { startServer };
+async function startGitHubServer(target, { verbose = false } = {}) {
+  const { resolveToken, fetchAllSessions } = require('./github');
+
+  const token = resolveToken();
+  if (!token) {
+    process.stderr.write('\n  Warning: No GitHub token found. Rate limit: 60 req/hr.\n');
+    process.stderr.write('  Set GITHUB_TOKEN or run: gh auth login\n\n');
+  }
+
+  process.stdout.write(`\n  Fetching sessions from GitHub: ${target}…\n`);
+  let sessions;
+  try {
+    sessions = await fetchAllSessions(target, token, { verbose });
+  } catch (err) {
+    console.error(`\n  Error: ${err.message}\n`);
+    process.exit(1);
+  }
+
+  if (!sessions.length) {
+    console.error(`\n  No sessions found for: ${target}\n`);
+    process.exit(1);
+  }
+
+  const repos = [...new Set(sessions.map(s => s.repo).filter(Boolean))].sort();
+
+  const app = express();
+
+  app.get('/api/meta', (_req, res) => {
+    res.json({ mode: 'github', target, repos });
+  });
+
+  app.get('/api/sessions', (_req, res) => {
+    res.json(sessions);
+  });
+
+  app.get('/', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
+  });
+
+  const PORT = parseInt(process.env.PORT || '3847', 10);
+
+  const server = app.listen(PORT, '127.0.0.1', () => {
+    const url = `http://localhost:${PORT}`;
+    console.log(`\n  AI Gains ⚡  [GitHub mode]\n`);
+    console.log(`  Dashboard : ${url}`);
+    console.log(`  Target    : ${target}`);
+    console.log(`  Sessions  : ${sessions.length}`);
+    console.log(`  Repos     : ${repos.length}`);
+    console.log(`\n  Press Ctrl+C to stop\n`);
+    openBrowser(url);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n  Port ${PORT} is already in use.`);
+      console.error(`  Try: PORT=4000 npx ai-gains github ${target}\n`);
+    } else {
+      console.error('  Server error:', err.message);
+    }
+    process.exit(1);
+  });
+
+  process.on('SIGINT', () => {
+    process.stdout.write('\n');
+    if (server.closeAllConnections) server.closeAllConnections();
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 500).unref();
+  });
+}
+
+module.exports = { startServer, startGitHubServer };
