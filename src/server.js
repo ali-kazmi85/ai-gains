@@ -16,23 +16,55 @@ function openBrowser(url) {
   });
 }
 
-function readSessions(aiGainsDir) {
-  return fs.readdirSync(aiGainsDir)
-    .filter(f => f.endsWith('.json'))
-    .sort()
-    .map(file => {
-      try {
-        return JSON.parse(fs.readFileSync(path.join(aiGainsDir, file), 'utf8'));
-      } catch {
-        return null;
-      }
-    })
-    .filter(s => s && Array.isArray(s.achievements) && typeof s.duration_minutes === 'number');
+function findAiGainsDirs(rootDir) {
+  const results = [];
+  const rootAiGains = path.join(rootDir, '.ai-gains');
+  if (fs.existsSync(rootAiGains)) results.push(rootAiGains);
+  let entries;
+  try { entries = fs.readdirSync(rootDir, { withFileTypes: true }); }
+  catch { return results; }
+  function walk(dir) {
+    let ents;
+    try { ents = fs.readdirSync(dir, { withFileTypes: true }); }
+    catch { return; }
+    for (const entry of ents) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.name === '.ai-gains') results.push(full);
+      else walk(full);
+    }
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+    walk(path.join(rootDir, entry.name));
+  }
+  return results;
 }
 
-function startServer(aiGainsDir) {
-  if (!fs.existsSync(aiGainsDir)) {
-    console.error(`\n  Error: No .ai-gains directory found in:\n  ${process.cwd()}\n`);
+function readSessions(aiGainsDirs) {
+  const seen = new Set();
+  return aiGainsDirs.flatMap(dir =>
+    fs.readdirSync(dir)
+      .filter(f => f.endsWith('.json'))
+      .sort()
+      .map(file => {
+        try {
+          return JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
+        } catch {
+          return null;
+        }
+      })
+  )
+  .filter(s => s && Array.isArray(s.achievements) && typeof s.duration_minutes === 'number')
+  .filter(s => { if (seen.has(s.uuid)) return false; seen.add(s.uuid); return true; });
+}
+
+function startServer(rootDir) {
+  const aiGainsDirs = findAiGainsDirs(rootDir);
+  if (aiGainsDirs.length === 0) {
+    console.error(`\n  Error: No .ai-gains directory found under:\n  ${rootDir}\n`);
     console.error('  Run this command from a project directory containing a .ai-gains folder.\n');
     process.exit(1);
   }
@@ -41,7 +73,7 @@ function startServer(aiGainsDir) {
 
   app.get('/api/sessions', (req, res) => {
     try {
-      res.json(readSessions(aiGainsDir));
+      res.json(readSessions(aiGainsDirs));
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -57,7 +89,12 @@ function startServer(aiGainsDir) {
     const url = `http://localhost:${PORT}`;
     console.log(`\n  AI Gains ⚡\n`);
     console.log(`  Dashboard : ${url}`);
-    console.log(`  Directory : ${aiGainsDir}`);
+    if (aiGainsDirs.length === 1) {
+      console.log(`  Directory : ${aiGainsDirs[0]}`);
+    } else {
+      console.log(`  Directories (${aiGainsDirs.length}):`);
+      aiGainsDirs.forEach(d => console.log(`    ${d}`));
+    }
     console.log(`\n  Press Ctrl+C to stop\n`);
     openBrowser(url);
   });

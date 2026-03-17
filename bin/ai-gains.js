@@ -10,7 +10,7 @@ if (command === 'init') {
   initProject(process.cwd());
 } else if (!command || command === 'dashboard') {
   const { startServer } = require('../src/server');
-  startServer(path.join(process.cwd(), '.ai-gains'));
+  startServer(process.cwd());
 } else {
   console.error(`\n  Unknown command: ${command}`);
   console.error('  Usage:');
