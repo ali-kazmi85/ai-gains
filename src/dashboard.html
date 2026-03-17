@@ -430,6 +430,8 @@
     #detail-view { display: none; }
     #detail-view.active { display: block; }
     #dashboard-view.hidden { display: none; }
+    #sessions-view { display: block; }
+    #sessions-view.hidden { display: none; }
 
     .back-btn {
       display: inline-flex;
@@ -545,72 +547,6 @@
       color: var(--muted);
     }
     .placeholder-icon { font-size: 44px; margin-bottom: 14px; }
-
-    /* ── Category breakdown ── */
-    .cat-layout {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-    }
-
-    .cat-donut-wrap {
-      position: relative;
-      width: 180px;
-      height: 180px;
-      flex-shrink: 0;
-    }
-
-    .cat-legend {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .cat-legend-row {
-      display: grid;
-      grid-template-columns: 10px 1fr auto auto;
-      align-items: center;
-      gap: 8px 12px;
-      padding: 6px 0;
-      border-bottom: 1px solid var(--border);
-      cursor: default;
-      transition: background 0.1s;
-      border-radius: 4px;
-    }
-
-    .cat-legend-row:last-child { border-bottom: none; }
-    .cat-legend-row:hover { background: var(--surface-2); }
-
-    .cat-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      justify-self: center;
-    }
-
-    .cat-legend-name {
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .cat-legend-time {
-      font-size: 13px;
-      font-weight: 700;
-      text-align: right;
-      white-space: nowrap;
-    }
-
-    .cat-legend-meta {
-      font-size: 11px;
-      color: var(--muted);
-      text-align: right;
-      white-space: nowrap;
-    }
-
-    @media (max-width: 600px) {
-      .cat-layout { flex-direction: column; align-items: flex-start; }
-      .cat-donut-wrap { width: 150px; height: 150px; }
-    }
 
     /* ── Category badge ── */
     .cat-badge {
@@ -819,9 +755,10 @@
         <div class="stat-label">Time Saved</div>
         <div class="stat-value c-green" id="stat-saved">—</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" onclick="showSessions()" style="cursor:pointer;position:relative" title="View all sessions">
         <div class="stat-label">Sessions</div>
         <div class="stat-value c-blue" id="stat-sessions">—</div>
+        <span style="position:absolute;top:10px;right:12px;font-size:16px;color:var(--muted);line-height:1">›</span>
       </div>
       <div class="stat-card">
         <div class="stat-label">Achievements</div>
@@ -844,19 +781,6 @@
       </div>
     </div>
 
-    <!-- Category breakdown -->
-    <div id="cat-section" style="display:none">
-      <div class="section">
-        <div class="section-label">By Category</div>
-        <div class="cat-layout">
-          <div class="cat-donut-wrap">
-            <canvas id="cat-chart"></canvas>
-          </div>
-          <div class="cat-legend" id="cat-legend"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- Category efficiency -->
     <div id="cat-efficiency-section" style="display:none"></div>
 
@@ -866,11 +790,21 @@
     <!-- Repo leaderboard -->
     <div id="repo-leaderboard" style="display:none"></div>
 
-    <!-- Sessions list -->
-    <div class="sessions-label animate-in" style="animation-delay:0.18s">Sessions</div>
-    <div id="sessions-list" class="animate-in" style="animation-delay:0.18s">
-      <div class="placeholder"><div class="placeholder-icon">⏳</div>Loading…</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ SESSIONS ════════════════════════════════ -->
+<div id="sessions-view" class="hidden">
+  <header>
+    <div class="header-inner">
+      <div class="logo">AI <span class="accent">Gains</span> ⚡</div>
+      <button class="theme-toggle" id="theme-toggle-3" onclick="toggleTheme()" title="Toggle light / dark mode"></button>
     </div>
+  </header>
+  <div class="container">
+    <button class="back-btn" onclick="showDashboard()">← Back to Dashboard</button>
+    <div class="sessions-label" id="sessions-view-title">Sessions</div>
+    <div id="sessions-list-container"></div>
   </div>
 </div>
 
@@ -894,7 +828,6 @@
 
   let sessions      = [];
   let chart         = null;
-  let catChart      = null;
   let filterAuthor  = '';
   let filterPeriod  = 'all'; // overwritten by pickDefaultPeriod() after load
   let filterRepos   = new Set();
@@ -1030,7 +963,6 @@
     filterAuthor = document.getElementById('filter-author').value;
     renderLastSessionNote();
     renderStats();
-    renderCategories();
     renderCategoryEfficiency();
     renderLeaderboards();
     renderChart();
@@ -1230,104 +1162,6 @@
       trendEl.textContent = '';
       trendEl.title = '';
     }
-  }
-
-  // ── Render category breakdown ────────────────────────────────────────────────
-
-  function renderCategories() {
-    const data    = getFiltered();
-    const section = document.getElementById('cat-section');
-    if (catChart) { catChart.destroy(); catChart = null; }
-    if (!data.length) { section.style.display = 'none'; return; }
-
-    const tally = {};
-    let totalSaved = 0;
-    for (const s of data) {
-      for (const a of s.achievements) {
-        const cat  = getCategory(a);
-        const mins = a.estimated_human_time_minutes || 0;
-        if (!tally[cat.id]) tally[cat.id] = { cat, saved: 0, count: 0 };
-        tally[cat.id].saved += mins;
-        tally[cat.id].count += 1;
-        totalSaved += mins;
-      }
-    }
-
-    const sorted = Object.values(tally).sort((a, b) => b.saved - a.saved);
-    if (!sorted.length) { section.style.display = 'none'; return; }
-
-    section.style.display = '';
-
-    // Centre-text plugin — draws total time saved + label inside the donut hole
-    const centerTextPlugin = {
-      id: 'centerText',
-      afterDatasetsDraw(ch) {
-        const { ctx, chartArea: { top, bottom, left, right } } = ch;
-        const cx = (left + right) / 2, cy = (top + bottom) / 2;
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.fillStyle = tc('#e8e8f0', '#18181e');
-        ctx.font = '700 16px JetBrains Mono, monospace';
-        ctx.fillText(fmtDur(totalSaved), cx, cy - 9);
-        ctx.fillStyle = tc('#6b6b80', '#72727f');
-        ctx.font = '10px JetBrains Mono, monospace';
-        ctx.fillText('TIME SAVED', cx, cy + 10);
-        ctx.restore();
-      }
-    };
-
-    catChart = new Chart(document.getElementById('cat-chart').getContext('2d'), {
-      type: 'doughnut',
-      plugins: [centerTextPlugin],
-      data: {
-        labels:   sorted.map(r => r.cat.label),
-        datasets: [{
-          data:            sorted.map(r => r.saved),
-          backgroundColor: sorted.map(r => r.cat.color),
-          borderColor:     tc('#0c0c0e', '#f5f4f0'),
-          borderWidth:     3,
-          hoverOffset:     6,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '68%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: tc('#131316', '#ffffff'),
-            borderColor: tc('#28282f', '#d8d7cf'),
-            borderWidth: 1,
-            titleColor: tc('#e8e8f0', '#18181e'),
-            bodyColor: tc('#6b6b80', '#72727f'),
-            padding: 10,
-            callbacks: {
-              label(ctx) {
-                const { saved, count } = sorted[ctx.dataIndex];
-                const pct = totalSaved > 0 ? ((saved / totalSaved) * 100).toFixed(1) : 0;
-                return [
-                  `  ${fmtDur(saved)} saved (${pct}%)`,
-                  `  ${count} achievement${count !== 1 ? 's' : ''}`,
-                ];
-              }
-            }
-          }
-        }
-      }
-    });
-
-    // Legend table
-    document.getElementById('cat-legend').innerHTML = sorted.map(({ cat, saved, count }) => {
-      const pct = totalSaved > 0 ? Math.round((saved / totalSaved) * 100) : 0;
-      return `
-        <div class="cat-legend-row">
-          <span class="cat-dot" style="background:${cat.color}"></span>
-          <span class="cat-legend-name">${esc(cat.label)}</span>
-          <span class="cat-legend-time" style="color:${cat.color}">${esc(fmtDur(saved))}</span>
-          <span class="cat-legend-meta">${count} achievement${count !== 1 ? 's' : ''} · ${pct}%</span>
-        </div>`;
-    }).join('');
   }
 
   // ── Render leaderboards ──────────────────────────────────────────────────────
@@ -1607,7 +1441,7 @@
   // ── Render session list ─────────────────────────────────────────────────────
 
   function renderSessions() {
-    const el = document.getElementById('sessions-list');
+    const el = document.getElementById('sessions-list-container');
     const data = [...getFiltered()].sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
 
     if (!data.length) {
@@ -1752,8 +1586,19 @@
     window.scrollTo(0, 0);
   }
 
+  function showSessions() {
+    const filtered = getFiltered();
+    document.getElementById('dashboard-view').classList.add('hidden');
+    document.getElementById('sessions-view').classList.remove('hidden');
+    document.getElementById('sessions-view-title').textContent = `Sessions (${filtered.length})`;
+    renderSessions();
+    updateThemeIcons();
+    window.scrollTo(0, 0);
+  }
+
   function showDashboard() {
     document.getElementById('dashboard-view').classList.remove('hidden');
+    document.getElementById('sessions-view').classList.add('hidden');
     document.getElementById('detail-view').classList.remove('active');
     window.scrollTo(0, 0);
   }
@@ -1847,17 +1692,11 @@
       pickDefaultPeriod();
       renderLastSessionNote();
       renderStats();
-      renderCategories();
       renderCategoryEfficiency();
       renderLeaderboards();
       renderChart();
-      renderSessions();
     } catch (err) {
-      document.getElementById('sessions-list').innerHTML = `
-        <div class="placeholder">
-          <div class="placeholder-icon">⚠️</div>
-          Failed to load sessions: ${esc(err.message)}
-        </div>`;
+      console.error('Failed to load sessions:', err);
     }
   }
 
