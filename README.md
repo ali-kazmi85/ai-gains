@@ -40,14 +40,18 @@ After completing a meaningful piece of work — a feature, a bug fix, a refactor
 /ai-gains
 ```
 
-Claude will reflect on what was done, estimate how long it would have taken a human, and write the achievement to the session log. Run it as many times as you like within a session to capture checkpoints, or once at the end to log everything in one go. The hooks handle start and end time automatically — `/ai-gains` is purely for recording what was accomplished.
+Claude will reflect on what was done, capture git output signals (lines added/removed, commits), estimate how long the work would have taken a competent mid-level developer without AI, and write the achievement to the session log. Estimates deliberately err conservative — credible numbers matter more than impressive ones.
+
+Run it as many times as you like within a session to capture checkpoints, or once at the end to log everything in one go. The hooks handle start and end time automatically — `/ai-gains` is purely for recording what was accomplished.
 
 ## Dashboard features
 
-- **Stats** — total sessions, achievements, time saved, average speedup
-- **Chart** — AI time vs estimated human time per session
+- **Stats** — total time saved (hero metric), sessions, achievements, weighted average speedup
+- **Chart** — time saved per session as a bar chart, with a 5-session rolling average line showing whether AI is becoming more or less useful over time. Sessions with suspiciously high speedup estimates (>15×) are highlighted amber.
+- **Category breakdown** — donut chart showing which types of work account for most time saved
+- **Where AI helps most** — per-category table of average speedup, total time saved, and session count
 - **Filters** — filter by author and time period
-- **Session detail** — per-session breakdown of achievements and files touched
+- **Session detail** — per-session breakdown of achievements, categories, and files touched
 
 ## What gets tracked
 
@@ -60,15 +64,24 @@ Each session file (`.ai-gains/<session-id>.json`) contains:
   "end_time": "2026-01-15T09:45:00Z",
   "author": "you@example.com",
   "duration_minutes": 45,
+  "output": {
+    "files_changed": 4,
+    "lines_added": 120,
+    "lines_removed": 35,
+    "commits": 2
+  },
   "achievements": [
     {
       "description": "Implemented user authentication with JWT",
-      "estimated_human_time_minutes": 180
+      "estimated_human_time_minutes": 180,
+      "category": "enhancement"
     }
   ],
   "ai_speedup": "4× faster — 3h of work done in 45 minutes"
 }
 ```
+
+The `output` field is auto-captured from git and provides an objective cross-check on estimates. It is omitted if git is unavailable.
 
 ## Committing session logs
 

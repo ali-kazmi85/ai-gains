@@ -52,10 +52,17 @@ template/             Files copied/merged into user's project on `init`
   "end_time": "ISO8601",
   "author": "user@example.com",
   "duration_minutes": 45,
+  "output": {
+    "files_changed": 4,
+    "lines_added": 120,
+    "lines_removed": 35,
+    "commits": 2
+  },
   "achievements": [
     {
       "description": "...",
       "estimated_human_time_minutes": 180,
+      "category": "enhancement",
       "files_created": [],
       "files_modified": []
     }
@@ -63,6 +70,8 @@ template/             Files copied/merged into user's project on `init`
   "ai_speedup": "4× faster — 3h of work done in 45 minutes"
 }
 ```
+
+The `output` field is optional (omitted when git is unavailable or repo has no history). All schema changes are additive — existing sessions without `output` render correctly in the dashboard.
 
 ### Hook merging (`src/init.js`)
 

@@ -38,17 +38,27 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
    git config user.email
    ```
 
-4. Check if a session file already exists for this session:
+4. Capture objective output signals from git to supplement the session record:
+   ```bash
+   git diff --stat HEAD~1 HEAD 2>/dev/null || git diff --stat HEAD 2>/dev/null || echo ""
+   ```
+   Parse `lines_added`, `lines_removed`, and `files_changed` from the diff stat summary line (e.g. `3 files changed, 120 insertions(+), 35 deletions(-)`). Also count commits made during the session:
+   ```bash
+   git log --oneline --since="<start_time from step 2>" 2>/dev/null | wc -l
+   ```
+   Store these as an `output` object: `{ "files_changed": N, "lines_added": N, "lines_removed": N, "commits": N }`. If git is unavailable or the repo has no history, omit the `output` field.
+
+5. Check if a session file already exists for this session:
    ```
    .ai-gains/*_<session_id>.json
    ```
    If it exists, read the existing `achievements` array to use as a starting point for merging.
 
-5. Reflect on all work done this session: research done, features built, bugs fixed, problems solved, code reviewed, debugging done, documentation updated, etc.
+6. Reflect on all work done this session: research done, features built, bugs fixed, problems solved, code reviewed, debugging done, documentation updated, etc.
 
-6. For each achievement, estimate how long a human developer would take to do the same work without AI assistance.
+7. For each achievement, estimate how long a **competent mid-level developer** would take to complete this work without AI assistance, assuming familiarity with the language and tools but not this specific codebase. When in doubt, **underestimate rather than overestimate** — conservative figures are more credible and useful than inflated ones.
 
-7. For each achievement, assign a `category` from this list — pick the one that best describes the primary nature of the work:
+8. For each achievement, assign a `category` from this list — pick the one that best describes the primary nature of the work:
    - `bug-fix` — fixing a broken or incorrect behaviour
    - `debugging` — diagnosing, tracing or reproducing a problem (without necessarily fixing it yet)
    - `enhancement` — adding or improving a feature, refactoring, or extending functionality
@@ -59,9 +69,9 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
    - `ui-ux` — designing or improving user interfaces and user experiences
    - `other` — anything that doesn't fit the above
 
-8. Merge new achievements with any existing ones from step 4. If a prior achievement is superseded or refined by new work in the same area, update it in place rather than duplicating it.
+9. Merge new achievements with any existing ones from step 5. If a prior achievement is superseded or refined by new work in the same area, update it in place rather than duplicating it.
 
-9. Write the session file to `.ai-gains/<start_time_with_colons_replaced>_<session_id>.json`. The filename uses `-` instead of `:` in the timestamp for cross-platform compatibility. The JSON structure should look like this:
+10. Write the session file to `.ai-gains/<start_time_with_colons_replaced>_<session_id>.json`. The filename uses `-` instead of `:` in the timestamp for cross-platform compatibility. The JSON structure should look like this:
 
 ```json
 {
@@ -70,6 +80,12 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
   "end_time": "<ISO end time>",
   "author": "<git user email>",
   "duration_minutes": "<number>",
+  "output": {
+    "files_changed": "<number>",
+    "lines_added": "<number>",
+    "lines_removed": "<number>",
+    "commits": "<number>"
+  },
   "achievements": [
     {
       "description": "<what was done>",
@@ -81,4 +97,4 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
 }
 ```
 
-10. Confirm to the user that the log has been updated and summarize the key achievements.
+11. Confirm to the user that the log has been updated and summarize the key achievements.
