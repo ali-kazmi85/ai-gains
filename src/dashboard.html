@@ -835,6 +835,7 @@
   let sessions      = [];
   let chart         = null;
   let donutChart    = null;
+  let sessionSource = 'dashboard'; // 'dashboard' | 'sessions'
   let filterAuthor  = '';
   let filterPeriod  = 'all'; // overwritten by pickDefaultPeriod() after load
   let filterRepos   = new Set();
@@ -1544,7 +1545,7 @@
       const outlierFlag = sp > 15 ? `<span title="High speedup estimate — verify manually" style="cursor:help;font-size:12px;color:var(--yellow);line-height:1">⚠</span>` : '';
 
       return `
-        <div class="session-card animate-in" style="animation-delay:${Math.min(i * 0.04, 0.28)}s" onclick="showSession('${esc(s.uuid || s.session_id)}')">
+        <div class="session-card animate-in" style="animation-delay:${Math.min(i * 0.04, 0.28)}s" onclick="showSession('${esc(s.uuid || s.session_id)}', 'sessions')">
           <div class="session-icon">⚡</div>
           <div class="session-body">
             <div class="session-top">
@@ -1565,7 +1566,8 @@
 
   // ── Session detail ──────────────────────────────────────────────────────────
 
-  function showSession(uuid) {
+  function showSession(uuid, from) {
+    sessionSource = from || 'dashboard';
     const s  = sessions.find(x => (x.uuid || x.session_id) === uuid);
     if (!s) return;
     const sp = speedup(s);
@@ -1668,7 +1670,18 @@
     `;
 
     document.getElementById('dashboard-view').classList.add('hidden');
+    document.getElementById('sessions-view').classList.add('hidden');
     document.getElementById('detail-view').classList.add('active');
+    const backBtn = document.querySelector('#detail-view .back-btn');
+    if (backBtn) {
+      if (sessionSource === 'sessions') {
+        backBtn.textContent = '← Back to Sessions';
+        backBtn.onclick = showSessionsBack;
+      } else {
+        backBtn.textContent = '← Back to Dashboard';
+        backBtn.onclick = showDashboard;
+      }
+    }
     window.scrollTo(0, 0);
   }
 
@@ -1679,6 +1692,12 @@
     document.getElementById('sessions-view-title').textContent = `Sessions (${filtered.length})`;
     renderSessions();
     updateThemeIcons();
+    window.scrollTo(0, 0);
+  }
+
+  function showSessionsBack() {
+    document.getElementById('sessions-view').classList.remove('hidden');
+    document.getElementById('detail-view').classList.remove('active');
     window.scrollTo(0, 0);
   }
 
