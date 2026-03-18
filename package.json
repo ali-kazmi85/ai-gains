@@ -1,6 +1,6 @@
 {
   "name": "ai-gains",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Interactive browser dashboard for AI development session tracking",
   "main": "src/server.js",
   "bin": {

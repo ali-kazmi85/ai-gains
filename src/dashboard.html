@@ -999,12 +999,14 @@
     if (!container) return;
     container.style.display = '';
     const list = document.getElementById('repo-checkbox-list');
-    list.innerHTML = availableRepos.map(repo => `
-      <label class="repo-check-label">
-        <input type="checkbox" class="repo-checkbox" value="${esc(repo)}" onchange="toggleRepo(this)">
-        <span>${esc(repo)}</span>
-      </label>
-    `).join('');
+    list.innerHTML = availableRepos.map(repo => {
+      const display = repo.includes('/') ? repo.split('/').pop() : repo;
+      return `
+        <label class="repo-check-label">
+          <input type="checkbox" class="repo-checkbox" value="${esc(repo)}" onchange="toggleRepo(this)">
+          <span title="${esc(repo)}">${esc(display)}</span>
+        </label>`;
+    }).join('');
   }
 
   function toggleRepo(checkbox) {
@@ -1233,7 +1235,7 @@
 
   function renderRepoLeaderboard() {
     const container = document.getElementById('repo-leaderboard');
-    if (!isGitHubMode || availableRepos.length <= 1) { container.style.display = 'none'; return; }
+    if (!isGitHubMode || availableRepos.length <= 1 || filterRepos.size === 1) { container.style.display = 'none'; return; }
 
     const data = getFiltered();
     const repoMap = {};
