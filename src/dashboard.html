@@ -583,7 +583,7 @@
     .lb-row:last-child { border-bottom: none; }
     .lb-row:hover { background: var(--surface-2); }
     .lb-row.lb-active { background: var(--blue-dim); }
-    .lb-row-5 { grid-template-columns: 28px 1fr 70px 110px 90px; }
+    .lb-row-5 { grid-template-columns: 28px 1fr 70px 90px 110px; }
     .lb-row-4 { grid-template-columns: 28px 1fr 70px 110px; }
 
     .lb-head {
@@ -594,7 +594,7 @@
       border-bottom: 1px solid var(--border);
       margin-bottom: 4px;
     }
-    .lb-head-5 { grid-template-columns: 28px 1fr 70px 110px 90px; }
+    .lb-head-5 { grid-template-columns: 28px 1fr 70px 90px 110px; }
     .lb-head-4 { grid-template-columns: 28px 1fr 70px 110px; }
 
     .lb-rank {
@@ -617,6 +617,12 @@
       font-weight: 600;
       text-align: right;
       white-space: nowrap;
+    }
+    .lb-bar-cell {
+      background-image: linear-gradient(to left, var(--c-green, #4ade80) var(--bar-pct, 0%), transparent var(--bar-pct, 0%));
+      background-size: 100% 2px;
+      background-position: bottom right;
+      background-repeat: no-repeat;
     }
     .lb-head-cell {
       font-family: 'JetBrains Mono', monospace;
@@ -828,6 +834,7 @@
 
   let sessions      = [];
   let chart         = null;
+  let donutChart    = null;
   let filterAuthor  = '';
   let filterPeriod  = 'all'; // overwritten by pickDefaultPeriod() after load
   let filterRepos   = new Set();
@@ -1072,6 +1079,7 @@
   }
 
   function fmtDur(min) {
+    min = Math.round(min);
     if (!min) return '0 min';
     if (min < 60) return min + ' min';
     const h = Math.floor(min / 60), m = min % 60;
@@ -1193,16 +1201,18 @@
     if (authors.length < 2) { container.style.display = 'none'; return; }
     container.style.display = '';
 
+    const maxSaved = authors[0].totalSaved;
     const rows = authors.map((r, i) => {
       const avgSpeedup = r.totalAI > 0 ? (r.totalHuman / r.totalAI).toFixed(1) : '—';
       const isActive   = filterAuthor === r.author;
+      const displayAuthor = r.author.includes('@') ? r.author.split('@')[0] : r.author;
       return `
         <div class="lb-row lb-row-5${isActive ? ' lb-active' : ''}" onclick="setAuthorFilter('${esc(r.author)}')">
           <span class="lb-rank">${i + 1}</span>
-          <span class="lb-name">${esc(r.author)}</span>
+          <span class="lb-name" title="${esc(r.author)}">${esc(displayAuthor)}</span>
           <span class="lb-val">${r.sessions}</span>
-          <span class="lb-val c-green">${esc(fmtDur(r.totalSaved))}</span>
           <span class="lb-val c-orange">${avgSpeedup}×</span>
+          <span class="lb-val c-green lb-bar-cell" style="--bar-pct:${(r.totalSaved/maxSaved*100).toFixed(1)}%">${esc(fmtDur(r.totalSaved))}</span>
         </div>`;
     }).join('');
 
@@ -1213,8 +1223,8 @@
           <span class="lb-rank">#</span>
           <span class="lb-head-cell" style="text-align:left">Author</span>
           <span class="lb-head-cell">Sessions</span>
-          <span class="lb-head-cell">Time Saved</span>
           <span class="lb-head-cell">Avg Speedup</span>
+          <span class="lb-head-cell">Time Saved</span>
         </div>
         ${rows}
       </div>`;
@@ -1240,14 +1250,16 @@
     if (!repos.length) { container.style.display = 'none'; return; }
     container.style.display = '';
 
+    const maxSaved = repos[0].totalSaved;
     const rows = repos.map((r, i) => {
       const isActive = filterRepos.has(r.repo);
+      const displayRepo = r.repo.includes('/') ? r.repo.split('/').pop() : r.repo;
       return `
         <div class="lb-row lb-row-4${isActive ? ' lb-active' : ''}" onclick="setRepoFilter('${esc(r.repo)}')">
           <span class="lb-rank">${i + 1}</span>
-          <span class="lb-name">${esc(r.repo)}</span>
+          <span class="lb-name" title="${esc(r.repo)}">${esc(displayRepo)}</span>
           <span class="lb-val">${r.sessions}</span>
-          <span class="lb-val c-green">${esc(fmtDur(r.totalSaved))}</span>
+          <span class="lb-val c-green lb-bar-cell" style="--bar-pct:${(r.totalSaved/maxSaved*100).toFixed(1)}%">${esc(fmtDur(r.totalSaved))}</span>
         </div>`;
     }).join('');
 
@@ -1282,7 +1294,7 @@
         const fraction = totalHumanInSession > 0 ? mins / totalHumanInSession : 1 / s.achievements.length;
         catStats[cat.id].totalHuman += mins;
         catStats[cat.id].totalAI   += s.duration_minutes * fraction;
-        catStats[cat.id].timeSaved += mins;
+        catStats[cat.id].timeSaved += mins - (s.duration_minutes * fraction);
         catStats[cat.id].sessionIds.add(s.uuid || s.session_id);
       }
     }
@@ -1295,7 +1307,7 @@
     container.style.display = '';
 
     const rows = sorted.map((r, i) => `
-      <div class="lb-row" style="grid-template-columns:28px 1fr 60px 110px 80px">
+      <div class="lb-row" data-cat-id="${r.cat.id}" style="grid-template-columns:28px 1fr 60px 110px 80px">
         <span class="lb-rank">${i + 1}</span>
         <span class="lb-name"><span class="cat-badge" style="background:${r.cat.dim};color:${r.cat.color}">● ${esc(r.cat.label)}</span></span>
         <span class="lb-val">${r.sessions}</span>
@@ -1306,15 +1318,89 @@
     container.innerHTML = `
       <div class="section">
         <div class="section-label">Where AI Helps Most</div>
-        <div class="lb-head" style="grid-template-columns:28px 1fr 60px 110px 80px">
-          <span class="lb-rank">#</span>
-          <span class="lb-head-cell" style="text-align:left">Category</span>
-          <span class="lb-head-cell">Sessions</span>
-          <span class="lb-head-cell">Time Saved</span>
-          <span class="lb-head-cell">Avg Speedup</span>
+        <div style="display:flex;gap:24px;align-items:flex-start">
+          <div style="flex:1;min-width:0">
+            <div class="lb-head" style="grid-template-columns:28px 1fr 60px 110px 80px">
+              <span class="lb-rank">#</span>
+              <span class="lb-head-cell" style="text-align:left">Category</span>
+              <span class="lb-head-cell">Sessions</span>
+              <span class="lb-head-cell">Time Saved</span>
+              <span class="lb-head-cell">Avg Speedup</span>
+            </div>
+            ${rows}
+          </div>
+          <div style="width:220px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding-top:8px">
+            <canvas id="cat-donut" width="220" height="220"></canvas>
+          </div>
         </div>
-        ${rows}
       </div>`;
+
+    // Render donut chart
+    if (donutChart) { donutChart.destroy(); donutChart = null; }
+    const donutCanvas = document.getElementById('cat-donut');
+    if (donutCanvas) {
+      donutCanvas.addEventListener('mouseleave', () => {
+        container.querySelectorAll('.lb-row[data-cat-id]').forEach(r => r.style.opacity = '');
+      });
+      const positiveSlices = sorted.filter(r => r.timeSaved > 0);
+      donutChart = new Chart(donutCanvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: positiveSlices.map(r => r.cat.label),
+          datasets: [{
+            data: positiveSlices.map(r => Math.round(r.timeSaved)),
+            backgroundColor: positiveSlices.map(r => r.cat.dim.replace('0.15', '0.7')),
+            borderColor: positiveSlices.map(r => r.cat.color),
+            borderWidth: 1.5,
+            hoverOffset: 6,
+          }]
+        },
+        plugins: [{
+          id: 'centerLabel',
+          afterDatasetsDraw(chart) {
+            const { ctx, chartArea: { top, bottom, left, right } } = chart;
+            const cx = (left + right) / 2, cy = (top + bottom) / 2;
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = tc('#9090a8', '#6b6b80');
+            ctx.font = '600 11px system-ui, sans-serif';
+            ctx.letterSpacing = '0.08em';
+            ctx.fillText('TIME SAVED', cx, cy - 7);
+            ctx.fillText('BY CATEGORY', cx, cy + 7);
+            ctx.restore();
+          }
+        }],
+        options: {
+          responsive: false,
+          cutout: '62%',
+          onHover(_, elements) {
+            const allRows = container.querySelectorAll('.lb-row[data-cat-id]');
+            if (!elements.length) {
+              allRows.forEach(r => r.style.opacity = '');
+              return;
+            }
+            const hoveredCat = positiveSlices[elements[0].index].cat.id;
+            allRows.forEach(r => {
+              r.style.opacity = r.dataset.catId === hoveredCat ? '1' : '0.3';
+            });
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${fmtDur(ctx.parsed)} saved`,
+              },
+              bodyColor: tc('#1e1e2e', '#e2e2f0'),
+              backgroundColor: tc('rgba(255,255,255,0.95)', 'rgba(30,30,46,0.95)'),
+              borderColor: tc('#e2e2f0', '#2e2e4e'),
+              borderWidth: 1,
+              titleColor: tc('#6b6b80', '#9090a8'),
+            },
+          },
+        },
+      });
+    }
   }
 
   // ── Render chart ────────────────────────────────────────────────────────────
