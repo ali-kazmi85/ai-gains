@@ -58,7 +58,7 @@ function readSessions(aiGainsDirs) {
       })
   )
   .filter(s => s && Array.isArray(s.achievements) && typeof s.duration_minutes === 'number')
-  .filter(s => { if (seen.has(s.uuid)) return false; seen.add(s.uuid); return true; });
+  .filter(s => { const key = s.session_id || s.uuid; if (seen.has(key)) return false; seen.add(key); return true; });
 }
 
 function startServer(rootDir) {

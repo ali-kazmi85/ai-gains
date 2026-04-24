@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 .vite/
 # npm auth token
 .npmrc
+
+# Scratch / handoff notes
+.scratch/
