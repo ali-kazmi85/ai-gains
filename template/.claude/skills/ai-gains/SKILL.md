@@ -11,7 +11,7 @@ Session tracking is managed automatically via a hook configured in `.claude/sett
 
 - **UserPromptSubmit hook**: Reads `session_id` and `transcript_path` from stdin and echoes both into context, along with a lightweight reminder for Claude to prompt the user to update the log at the end of each response. The skill itself is not loaded automatically — only when the user invokes `/ai-gains`.
 
-`duration_minutes` is derived from the first and last timestamped entries in the session transcript. This reflects actual conversation activity from first message to last response, and intentionally includes human review time, approval of actions, reading diffs, etc. — giving a true picture of total time spent with AI vs. without.
+`duration_minutes` is derived from the timestamped entries in the session transcript, from the first message (or the end of the previously-logged period, if `/ai-gains` was already run once this session) to the last response. This reflects actual conversation activity and intentionally includes human review time, approval of actions, reading diffs, etc. — giving a true picture of total time spent with AI vs. without. It accumulates across repeated `/ai-gains` invocations within the same session rather than being recomputed from the transcript's absolute first message each time — otherwise a transcript resumed days or weeks later would count that idle gap as active duration.
 
 ## Proactive Log Reminders
 
@@ -27,32 +27,39 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
 
 1. Get `session_id` and `transcript_path` from the context echoed by the UserPromptSubmit hook.
 
-2. Run `get-session-times.cjs` with the transcript path to get accurate start/end times and duration:
-   ```bash
-   node .claude/scripts/ai-gains/get-session-times.cjs <transcript_path>
+2. Check if a session file already exists for this session:
    ```
-   This outputs `{ start_time, end_time, duration_minutes }` derived from the first and last timestamped entries in the transcript.
+   .ai-gains/*_<session_id>.json
+   ```
+   If it exists, read it (`prior_end_time`, `prior_duration_minutes`, `start_time`, and the existing `achievements` array to use as a merge starting point).
 
-3. Get the author from git config:
+3. Run `get-session-times.cjs` with the transcript path to get accurate start/end times and duration. If a prior session file was found in step 2, pass its `end_time` as a second argument:
+   ```bash
+   node .claude/scripts/ai-gains/get-session-times.cjs <transcript_path> [prior_end_time]
+   ```
+   This outputs `{ start_time, end_time, duration_minutes }`. Without the second argument, `start_time`/`duration_minutes` are derived from the very first timestamped entry in the transcript — correct for a brand-new session. **With it**, `start_time` is bounded to the first entry *after* `prior_end_time`, so a transcript that gets resumed days or weeks later (e.g. via `claude --resume`/`--continue`) doesn't count that idle calendar gap as active duration.
+
+   If a prior session file exists, compute the values to actually store:
+   - `start_time` = the **original** `start_time` from the prior session file (unchanged — this is when the session first began)
+   - `end_time` = the new `end_time` from this run
+   - `duration_minutes` = `prior_duration_minutes` + this run's `duration_minutes` (cumulative sum of active-conversation time across all sittings, not the wall-clock span between the first and most recent message)
+
+   If no prior session file exists, use this run's `start_time`, `end_time`, and `duration_minutes` directly.
+
+4. Get the author from git config:
    ```bash
    git config user.email
    ```
 
-4. Capture objective output signals from git to supplement the session record:
+5. Capture objective output signals from git to supplement the session record:
    ```bash
    git diff --stat HEAD~1 HEAD 2>/dev/null || git diff --stat HEAD 2>/dev/null || echo ""
    ```
    Parse `lines_added`, `lines_removed`, and `files_changed` from the diff stat summary line (e.g. `3 files changed, 120 insertions(+), 35 deletions(-)`). Also count commits made during the session:
    ```bash
-   git log --oneline --since="<start_time from step 2>" 2>/dev/null | wc -l
+   git log --oneline --since="<start_time from step 3>" 2>/dev/null | wc -l
    ```
    Store these as an `output` object: `{ "files_changed": N, "lines_added": N, "lines_removed": N, "commits": N }`. If git is unavailable or the repo has no history, omit the `output` field.
-
-5. Check if a session file already exists for this session:
-   ```
-   .ai-gains/*_<session_id>.json
-   ```
-   If it exists, read the existing `achievements` array to use as a starting point for merging.
 
 6. Reflect on all work done this session: research done, features built, bugs fixed, problems solved, code reviewed, debugging done, documentation updated, etc.
 
@@ -69,9 +76,9 @@ When the user invokes `/ai-gains` or confirms they want to update the log:
    - `ui-ux` — designing or improving user interfaces and user experiences
    - `other` — anything that doesn't fit the above
 
-9. Merge new achievements with any existing ones from step 5. If a prior achievement is superseded or refined by new work in the same area, update it in place rather than duplicating it.
+9. Merge new achievements with any existing ones from step 2. If a prior achievement is superseded or refined by new work in the same area, update it in place rather than duplicating it.
 
-10. Write the session file to `.ai-gains/<start_time_with_colons_replaced>_<session_id>.json`. The filename uses `-` instead of `:` in the timestamp for cross-platform compatibility. The JSON structure should look like this:
+10. Write the session file to `.ai-gains/<start_time_with_colons_replaced>_<session_id>.json`, using the (possibly merged) `start_time`/`end_time`/`duration_minutes` from step 3. The filename uses `-` instead of `:` in the timestamp for cross-platform compatibility. The JSON structure should look like this:
 
 ```json
 {

@@ -3,15 +3,21 @@ const fs = require('fs');
 const readline = require('readline');
 
 const transcriptPath = process.argv[2];
+const sinceTimestamp = process.argv[3] || null;
 if (!transcriptPath) {
-  console.error('Usage: get-session-times.cjs <transcript_path>');
+  console.error('Usage: get-session-times.cjs <transcript_path> [since_end_time]');
   process.exit(1);
 }
 
 const CHUNK_SIZE = 4096;
 
-// Scan from the start for the first entry with a top-level timestamp
+// Scan from the start for the first entry with a top-level timestamp.
+// If sinceTimestamp is given (the end_time of a prior /ai-gains log for this
+// same session), skip entries at or before it — this bounds the search to
+// only the activity since the last log, so a session transcript resumed
+// days or weeks later doesn't count the intervening idle time as duration.
 function findFirstTimestamp() {
+  const since = sinceTimestamp ? new Date(sinceTimestamp).getTime() : null;
   const rl = readline.createInterface({
     input: fs.createReadStream(transcriptPath),
     crlfDelay: Infinity
@@ -21,13 +27,13 @@ function findFirstTimestamp() {
       if (!line.trim()) return;
       try {
         const entry = JSON.parse(line);
-        if (entry.timestamp) {
+        if (entry.timestamp && (since === null || new Date(entry.timestamp).getTime() > since)) {
           resolve(entry.timestamp);
           rl.close();
         }
       } catch {}
     });
-    rl.on('close', () => resolve(null));
+    rl.on('close', () => resolve(since !== null ? sinceTimestamp : null));
   });
 }
 

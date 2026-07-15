@@ -1098,6 +1098,14 @@
     return s.duration_minutes > 0 ? h / s.duration_minutes : 0;
   }
 
+  // Floored at 0 so a single corrupted/low-speedup session (e.g. a resumed
+  // multi-day transcript inflating duration_minutes) can't drag aggregate
+  // "time saved" totals negative. Per-session detail views intentionally
+  // show the raw (possibly negative) value so outliers stay visible.
+  function sessionSaved(s) {
+    return Math.max(0, humanTime(s) - s.duration_minutes);
+  }
+
   function esc(str) {
     return String(str)
       .replace(/&/g, '&amp;')
@@ -1139,7 +1147,7 @@
     const data     = getFiltered();
     const totalAI    = data.reduce((s, x) => s + x.duration_minutes, 0);
     const totalHuman = data.reduce((s, x) => s + humanTime(x), 0);
-    const saved      = totalHuman - totalAI;
+    const saved      = data.reduce((s, x) => s + sessionSaved(x), 0);
     const sp         = totalAI > 0 ? totalHuman / totalAI : 0;
     const ach        = data.reduce((s, x) => s + x.achievements.length, 0);
 
@@ -1194,7 +1202,7 @@
       authorMap[author].sessions   += 1;
       authorMap[author].totalHuman += humanTime(s);
       authorMap[author].totalAI    += s.duration_minutes;
-      authorMap[author].totalSaved += humanTime(s) - s.duration_minutes;
+      authorMap[author].totalSaved += sessionSaved(s);
     }
 
     const authors = Object.entries(authorMap)
@@ -1243,7 +1251,7 @@
       if (!s.repo) continue;
       if (!repoMap[s.repo]) repoMap[s.repo] = { sessions: 0, totalSaved: 0 };
       repoMap[s.repo].sessions   += 1;
-      repoMap[s.repo].totalSaved += humanTime(s) - s.duration_minutes;
+      repoMap[s.repo].totalSaved += sessionSaved(s);
     }
 
     const repos = Object.entries(repoMap)
@@ -1297,7 +1305,7 @@
         const fraction = totalHumanInSession > 0 ? mins / totalHumanInSession : 1 / s.achievements.length;
         catStats[cat.id].totalHuman += mins;
         catStats[cat.id].totalAI   += s.duration_minutes * fraction;
-        catStats[cat.id].timeSaved += mins - (s.duration_minutes * fraction);
+        catStats[cat.id].timeSaved += Math.max(0, mins - (s.duration_minutes * fraction));
         catStats[cat.id].sessionIds.add(s.uuid || s.session_id);
       }
     }
